@@ -23,7 +23,16 @@ from core.lean4_interface import Lean4Interface, VerificationResult
 
 app = FastAPI(title="ProofCoach Lean 4 Verification Service")
 
-_lean4 = Lean4Interface(timeout=15)
+# Lazy-initialised so the module can be imported even when Lean is not installed.
+# The interface is created on first request rather than at import time.
+_lean4: Optional[Lean4Interface] = None
+
+
+def _get_lean4() -> Lean4Interface:
+    global _lean4
+    if _lean4 is None:
+        _lean4 = Lean4Interface(timeout=15)
+    return _lean4
 
 
 class VerifyRequest(BaseModel):
@@ -45,7 +54,7 @@ async def health():
 
 @app.post("/verify", response_model=VerifyResponse)
 async def verify(req: VerifyRequest):
-    result: VerificationResult = _lean4.verify(req.theorem, tactic=req.tactic)
+    result: VerificationResult = _get_lean4().verify(req.theorem, tactic=req.tactic)
     return VerifyResponse(
         success=result.success,
         message=result.message,
@@ -56,7 +65,7 @@ async def verify(req: VerifyRequest):
 
 @app.post("/verify_batch")
 async def verify_batch(theorems: list[str]):
-    results = _lean4.verify_batch(theorems)
+    results = _get_lean4().verify_batch(theorems)
     return [
         {"success": r.success, "theorem": r.theorem, "reward": r.reward}
         for r in results

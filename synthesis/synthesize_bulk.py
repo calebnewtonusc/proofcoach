@@ -84,9 +84,13 @@ class SynthesisPipeline:
         self._vllm_index = 0  # round-robin index for vLLM instances
 
         if backend == "claude":
-            self._claude_client = anthropic.AsyncAnthropic(
-                api_key=os.environ["ANTHROPIC_API_KEY"]
-            )
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY environment variable is not set. "
+                    "Export it before running the synthesis pipeline."
+                )
+            self._claude_client = anthropic.AsyncAnthropic(api_key=api_key)
         else:
             self._claude_client = None
 

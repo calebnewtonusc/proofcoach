@@ -180,38 +180,19 @@ class DPOMetricsCallback(TrainerCallback):
 # Data Formatting
 # ---------------------------------------------------------------------------
 
-def format_dpo_example(example: dict, tokenizer) -> dict:
+def format_dpo_example(example: dict, tokenizer) -> dict:  # noqa: ARG001
     """
-    Format a DPO pair into the tokenized format expected by TRL DPOTrainer.
+    Pass DPO pair fields through unchanged.
 
-    TRL DPOTrainer expects:
-      - prompt_input_ids
-      - chosen_input_ids
-      - rejected_input_ids
-      (handled internally by DPOTrainer when given raw text fields)
+    DPOTrainer applies the chat template internally.  Pre-applying it here
+    would cause the template to be applied twice, corrupting the input.
+    The fields are returned as raw conversation lists so DPOTrainer can
+    handle tokenization itself.
     """
-    prompt_messages = example.get("prompt", [])
-    chosen_messages = example.get("chosen", [])
-    rejected_messages = example.get("rejected", [])
-
-    # Format full chosen and rejected sequences
-    chosen_full = prompt_messages + chosen_messages
-    rejected_full = prompt_messages + rejected_messages
-
-    chosen_text = tokenizer.apply_chat_template(
-        chosen_full, tokenize=False, add_generation_prompt=False
-    )
-    rejected_text = tokenizer.apply_chat_template(
-        rejected_full, tokenize=False, add_generation_prompt=False
-    )
-    prompt_text = tokenizer.apply_chat_template(
-        prompt_messages, tokenize=False, add_generation_prompt=True
-    )
-
     return {
-        "prompt": prompt_text,
-        "chosen": chosen_text,
-        "rejected": rejected_text,
+        "prompt": example.get("prompt", []),
+        "chosen": example.get("chosen", []),
+        "rejected": example.get("rejected", []),
     }
 
 
@@ -306,7 +287,7 @@ def main():
         save_total_limit=2,
         load_best_model_at_end=True,
         deepspeed=args.deepspeed,
-        report_to="wandb",
+        report_to="wandb" if os.environ.get("WANDB_API_KEY") else "none",
         remove_unused_columns=False,
     )
 
@@ -317,7 +298,7 @@ def main():
         args=dpo_config,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         callbacks=[DPOMetricsCallback()],
     )
 

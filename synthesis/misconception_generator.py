@@ -96,9 +96,13 @@ class MisconceptionGenerator:
         self._vllm_index = 0
 
         if backend == "claude":
-            self._claude = anthropic.AsyncAnthropic(
-                api_key=os.environ["ANTHROPIC_API_KEY"]
-            )
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY environment variable is not set. "
+                    "Export it before running the misconception generator."
+                )
+            self._claude = anthropic.AsyncAnthropic(api_key=api_key)
 
         self._stats = {"generated": 0, "failed": 0}
         # PC-10: Shared aiohttp session for vLLM calls to enable connection pooling.

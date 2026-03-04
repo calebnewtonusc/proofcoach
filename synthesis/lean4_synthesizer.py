@@ -290,9 +290,13 @@ class Lean4Synthesizer:
         }
 
         if backend == "claude":
-            self._anthropic = anthropic.AsyncAnthropic(
-                api_key=os.environ.get("ANTHROPIC_API_KEY", "")
-            )
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY environment variable is not set. "
+                    "Export it before running the Lean 4 synthesizer."
+                )
+            self._anthropic = anthropic.AsyncAnthropic(api_key=api_key)
 
         if self._lean4_available:
             logger.info("Lean 4 binary found — will verify proofs")

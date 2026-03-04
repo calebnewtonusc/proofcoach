@@ -29,7 +29,7 @@ training:
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.01
   bf16: true
-  optim: "rmsprop"
+  optim: "adamw_torch_fused"
   logging_steps: 10
   save_steps: 100
   report_to: "wandb"

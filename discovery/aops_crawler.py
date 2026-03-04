@@ -113,6 +113,8 @@ class AoPSCrawler:
         self._session: Optional[aiohttp.ClientSession] = None
         self._stats = {"problems": 0, "solutions": 0, "errors": 0}
         self.RATE_LIMIT = asyncio.Semaphore(10)  # max 10 concurrent requests
+        # Initialised once here so _crawl_competition does not reset it for
+        # every competition and break concurrent tasks that already hold it.
         self._crawl_semaphore = asyncio.Semaphore(workers)  # per-competition page concurrency
 
     async def __aenter__(self) -> "AoPSCrawler":
@@ -167,12 +169,6 @@ class AoPSCrawler:
         problem_links = self._extract_problem_links(soup, competition)
 
         logger.info(f"{competition}: found {len(problem_links)} problem links")
-
-        # PC-23: Extract the inner fetch coroutine out of the loop. Defining
-        # async def inside a loop creates a new function object and closure on
-        # every iteration; using a bound helper avoids the overhead and is
-        # cleaner. The semaphore is stored on the instance for this crawl.
-        self._crawl_semaphore = asyncio.Semaphore(self.workers)
 
         problems_to_fetch = []
         for url, year, number in problem_links:
@@ -509,7 +505,12 @@ class AoPSCrawler:
             for attempt in range(3):
                 try:
                     await asyncio.sleep(self.DELAY_MIN + (self.DELAY_MAX - self.DELAY_MIN) * 0.5)
-                    assert self._session is not None
+                    if self._session is None:
+                        raise RuntimeError(
+                            "AoPSCrawler._fetch called before session was initialised. "
+                            "Use 'async with AoPSCrawler(...) as crawler:' to ensure "
+                            "the session is created via __aenter__."
+                        )
                     async with self._session.get(url) as response:
                         if response.status == 200:
                             return await response.text()

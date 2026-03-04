@@ -43,7 +43,7 @@ services:
       - MODEL_PATH=/model
       - VLLM_URL=http://model:9000
       - LEAN4_SERVER_URL=http://lean:8090
-      - API_SECRET_KEY=${API_SECRET_KEY:-change_me}
+      - API_SECRET_KEY=${API_SECRET_KEY}
       - REDIS_URL=redis://redis:6379
       - RAW_DATA_DIR=/data/raw
     volumes:

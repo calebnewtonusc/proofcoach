@@ -105,6 +105,7 @@ class OlympiadDownloader:
         self.workers = workers
         self._semaphore = asyncio.Semaphore(workers)
         self._stats = {"problems": 0, "errors": 0}
+        self._session: Optional[aiohttp.ClientSession] = None
 
     async def download_all_competitions(self) -> None:
         """Download all configured competitions."""
@@ -294,6 +295,11 @@ class OlympiadDownloader:
 
     async def _fetch(self, url: str) -> Optional[str]:
         """Fetch a URL with retry logic."""
+        if self._session is None:
+            raise RuntimeError(
+                "OlympiadDownloader._fetch called before session was initialised. "
+                "Call download_all_competitions() which sets up the session."
+            )
         for attempt in range(3):
             try:
                 await asyncio.sleep(0.2)  # polite delay
@@ -375,11 +381,26 @@ class PutnamDownloader:
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Download olympiad problem archives")
+    parser.add_argument("--output-dir", default="data/raw/olympiads")
+    parser.add_argument("--workers", type=int, default=10)
+    parser.add_argument("--putnam", action="store_true", help="Download Putnam archives")
+    parser.add_argument("--competition", nargs="+", default=None,
+                        help="Specific competitions to download")
+    args = parser.parse_args()
+
     async def main():
-        downloader = OlympiadDownloader(
-            output_dir="data/raw/olympiads",
-            workers=10,
-        )
-        await downloader.download_all_competitions()
+        if args.putnam:
+            downloader = PutnamDownloader(output_dir="data/raw/putnam")
+            await downloader.download_all()
+        else:
+            downloader = OlympiadDownloader(
+                output_dir=args.output_dir,
+                workers=args.workers,
+                competitions=args.competition,
+            )
+            await downloader.download_all_competitions()
 
     asyncio.run(main())

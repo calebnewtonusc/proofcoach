@@ -168,9 +168,13 @@ class SocraticSynthesizer:
         }
 
         if backend == "claude":
-            self._anthropic = anthropic.AsyncAnthropic(
-                api_key=os.environ.get("ANTHROPIC_API_KEY", "")
-            )
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY environment variable is not set. "
+                    "Export it before running the Socratic synthesizer."
+                )
+            self._anthropic = anthropic.AsyncAnthropic(api_key=api_key)
 
     def _next_vllm_url(self) -> str:
         # PC-11: Guard against ZeroDivisionError when vllm_urls is empty.

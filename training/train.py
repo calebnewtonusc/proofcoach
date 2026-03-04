@@ -32,9 +32,8 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     TrainerCallback,
-    TrainingArguments,
 )
-from trl import SFTTrainer
+from trl import SFTConfig, SFTTrainer
 
 
 def load_dataset(data_dir: str) -> tuple[Dataset, Dataset]:
@@ -206,7 +205,12 @@ def main():
     # set was actually loaded. If not, disable eval to avoid load_best_model_at_end
     # silently using the final checkpoint instead of the true best.
     has_val = len(val_dataset) > 0
-    training_args = TrainingArguments(
+
+    # Only report to wandb when a key is configured; otherwise fall back to
+    # "none" so the run doesn't fail if WANDB_API_KEY is not set.
+    report_to = "wandb" if os.environ.get("WANDB_API_KEY") else "none"
+
+    training_args = SFTConfig(
         output_dir=args.output_dir,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.micro_batch,
@@ -226,9 +230,11 @@ def main():
         load_best_model_at_end=has_val,
         metric_for_best_model="eval_loss" if has_val else None,
         deepspeed=args.deepspeed,
-        report_to="wandb",
+        report_to=report_to,
         dataloader_num_workers=4,
         remove_unused_columns=False,
+        dataset_text_field="text",
+        max_seq_length=args.max_seq_len,
     )
 
     # SFT Trainer
@@ -237,9 +243,7 @@ def main():
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        tokenizer=tokenizer,
-        dataset_text_field="text",
-        max_seq_length=args.max_seq_len,
+        processing_class=tokenizer,
         callbacks=[PrintMetricsCallback()],
     )
 

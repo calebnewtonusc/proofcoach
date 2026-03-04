@@ -86,13 +86,23 @@ class MisconceptionDetectorAgent:
 
         logger.info("Loading misconception detection model...")
         self._tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.bfloat16,
-            device_map=device,
-            attn_implementation="flash_attention_2",
-            trust_remote_code=True,
-        )
+        try:
+            self._model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.bfloat16,
+                device_map=device,
+                attn_implementation="flash_attention_2",
+                trust_remote_code=True,
+            )
+        except (ValueError, ImportError):
+            logger.warning("flash_attention_2 not available; falling back to eager attention")
+            self._model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.bfloat16,
+                device_map=device,
+                attn_implementation="eager",
+                trust_remote_code=True,
+            )
         self._model.eval()
         logger.info("MisconceptionDetectorAgent ready")
 

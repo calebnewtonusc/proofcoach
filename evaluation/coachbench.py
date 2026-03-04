@@ -106,13 +106,23 @@ class CoachBench:
 
         logger.info(f"Loading model for evaluation: {model_path}")
         self._tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-            attn_implementation="flash_attention_2",
-            trust_remote_code=True,
-        )
+        try:
+            self._model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.bfloat16,
+                device_map="auto",
+                attn_implementation="flash_attention_2",
+                trust_remote_code=True,
+            )
+        except (ValueError, ImportError):
+            logger.warning("flash_attention_2 not available; falling back to eager attention")
+            self._model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.bfloat16,
+                device_map="auto",
+                attn_implementation="eager",
+                trust_remote_code=True,
+            )
         self._model.eval()
 
         self._lean4 = Lean4Interface(
@@ -326,7 +336,8 @@ class CoachBench:
         # For proof problems — simplified: check key terms present
         key_terms = correct_answer.lower().split()[:3]
         response_lower = model_answer.lower()
-        return sum(1 for t in key_terms if t in response_lower) >= len(key_terms) // 2
+        required = max(1, len(key_terms) // 2)
+        return sum(1 for t in key_terms if t in response_lower) >= required
 
     def _find_similar_problem(self, problem: dict) -> Optional[dict]:
         """Find a similar problem for teaching evaluation."""

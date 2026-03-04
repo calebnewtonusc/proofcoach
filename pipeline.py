@@ -236,7 +236,7 @@ def run_train(args) -> None:
     import subprocess
 
     model = args.base_model or "Qwen/Qwen2.5-7B-Instruct"
-    num_gpus = args.num_gpus or 18
+    num_gpus = args.num_gpus if args.num_gpus is not None else 18
 
     if args.sft or args.all_train:
         logger.info("Stage 1: SFT...")

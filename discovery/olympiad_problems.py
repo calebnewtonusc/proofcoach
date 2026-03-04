@@ -140,8 +140,12 @@ def _difficulty(competition: str, number: int) -> int:
     elif "AIME" in competition:
         return max(4, min(9, 3 + number // 2))
     elif competition in ("USAMO", "USAJMO"):
+        if number <= 0:
+            return 7
         return [7, 8, 10, 7, 8, 10][min(number - 1, 5)]
     elif competition == "IMO":
+        if number <= 0:
+            return 7
         return [7, 8, 10, 7, 9, 10][min(number - 1, 5)]
     elif "HMMT" in competition:
         return max(4, min(9, 3 + number // 5))
