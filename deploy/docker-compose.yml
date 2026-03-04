@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  model:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0,1
+      - VLLM_API_KEY=${VLLM_API_KEY:-proofcoach_key}
+    volumes:
+      - ${MODEL_PATH:-./checkpoints/proofcoach-final}:/model:ro
+    command: >
+      --model /model
+      --tensor-parallel-size 2
+      --port 9000
+      --api-key ${VLLM_API_KEY:-proofcoach_key}
+      --max-model-len 8192
+      --dtype bfloat16
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  lean:
+    build:
+      context: .
+      dockerfile: Dockerfile.lean
+    ports:
+      - "8090:8090"
+    command: python deploy/lean_server.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  api:
+    build: .
+    environment:
+      - MODEL_PATH=/model
+      - VLLM_URL=http://model:9000
+      - LEAN4_SERVER_URL=http://lean:8090
+      - API_SECRET_KEY=${API_SECRET_KEY:-change_me}
+      - REDIS_URL=redis://redis:6379
+      - RAW_DATA_DIR=/data/raw
+    volumes:
+      - ${MODEL_PATH:-./checkpoints/proofcoach-final}:/model:ro
+      - ./data:/data:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      model:
+        condition: service_healthy
+      lean:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: uvicorn deploy.api_server:app --host 0.0.0.0 --port 8080
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+
+volumes:
+  redis_data:
+
+networks:
+  default:
+    name: proofcoach_main
