@@ -1,0 +1,5 @@
+[codespell]
+skip = *.pyc,*.json,*.lock,__pycache__,.git,*.yaml,*.yml,node_modules
+# "probabilit" is an intentional substring pattern used for topic keyword
+# matching (catches "probability" and "probabilistic") — not a typo.
+ignore-words-list = probabilit
