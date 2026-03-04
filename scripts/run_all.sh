@@ -71,6 +71,7 @@ deepspeed --num_gpus=18 training/train_rl.py \
 # Stage 3: DPO
 echo "[12/12] Stage 3: DPO on teaching quality..."
 deepspeed --num_gpus=18 training/train_dpo.py \
+  --deepspeed training/configs/ds_config.json \
   --base-model checkpoints/proofcoach-rl/final \
   --output-dir checkpoints/proofcoach-final \
   --epochs 1

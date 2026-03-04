@@ -439,7 +439,11 @@ def main():
     parser.add_argument("--batch-size", type=int, default=4)  # prompts per step
     parser.add_argument("--n-completions", type=int, default=4)
     parser.add_argument("--kl-coef", type=float, default=0.02)
-    parser.add_argument("--deepspeed", type=str, default=None)
+    # Note: DeepSpeed parallelism is handled by the `deepspeed --num_gpus=N`
+    # launcher that wraps this script. The custom GRPOTrainer does not use
+    # HF Trainer, so there is no Trainer.deepspeed config path. Do NOT pass
+    # --deepspeed here; use the launcher flag instead:
+    #   deepspeed --num_gpus=18 training/train_rl.py <args>
     parser.add_argument("--lean4-timeout", type=int, default=10)
     parser.add_argument("--simulated", action="store_true")
     args = parser.parse_args()

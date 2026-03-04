@@ -287,7 +287,7 @@ def main():
         save_total_limit=2,
         load_best_model_at_end=True,
         deepspeed=args.deepspeed,
-        report_to="wandb" if os.environ.get("WANDB_API_KEY") else "none",
+        report_to=["wandb"] if os.environ.get("WANDB_API_KEY") else [],
         remove_unused_columns=False,
     )
 

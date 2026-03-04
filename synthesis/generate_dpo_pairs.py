@@ -150,3 +150,27 @@ class DPOPairGenerator:
         return await self._helper._call_llm(
             GENERATE_REJECTED_SYSTEM, prompt, max_tokens=300
         )
+
+
+if __name__ == "__main__":
+    import argparse
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    parser = argparse.ArgumentParser(description="Generate DPO preference pairs for teaching quality")
+    parser.add_argument("--backend", choices=["claude", "vllm"], default="claude")
+    parser.add_argument("--vllm-urls", nargs="+", default=[])
+    parser.add_argument("--output-path", default="data/synthesized/dpo")
+    parser.add_argument("--synth-dir", default="data/synthesized/teaching")
+    parser.add_argument("--target-pairs", type=int, default=20000)
+    args = parser.parse_args()
+
+    generator = DPOPairGenerator(
+        synth_dir=args.synth_dir,
+        output_dir=args.output_path,
+        backend=args.backend,
+        vllm_urls=args.vllm_urls,
+        target_pairs=args.target_pairs,
+    )
+    asyncio.run(generator.generate_all())
+    print(f"\nDPO pair generation complete. Output: {args.output_path}/dpo_pairs.jsonl")

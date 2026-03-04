@@ -93,3 +93,30 @@ class TeachingSynthesizer:
                 count = sum(1 for _ in fh)
             dist[competition] = count
         return dist
+
+
+if __name__ == "__main__":
+    import argparse
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    parser = argparse.ArgumentParser(description="Synthesize Socratic teaching dialogues")
+    parser.add_argument("--backend", choices=["claude", "vllm"], default="claude")
+    parser.add_argument("--vllm-urls", nargs="+", default=[])
+    parser.add_argument("--workers", type=int, default=20)
+    parser.add_argument("--output-dir", default="data/synthesized/teaching")
+    parser.add_argument("--raw-dir", default="data/raw")
+    parser.add_argument("--target-total", type=int, default=90000)
+    args = parser.parse_args()
+
+    synthesizer = TeachingSynthesizer(
+        raw_dir=args.raw_dir,
+        output_dir=args.output_dir,
+        backend=args.backend,
+        vllm_urls=args.vllm_urls,
+        workers=args.workers,
+        target_total=args.target_total,
+    )
+    asyncio.run(synthesizer.synthesize_all())
+    dist = synthesizer.report_distribution()
+    print(f"\nDistribution across competitions: {dist}")

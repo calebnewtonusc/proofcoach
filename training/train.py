@@ -208,7 +208,7 @@ def main():
 
     # Only report to wandb when a key is configured; otherwise fall back to
     # "none" so the run doesn't fail if WANDB_API_KEY is not set.
-    report_to = "wandb" if os.environ.get("WANDB_API_KEY") else "none"
+    report_to = ["wandb"] if os.environ.get("WANDB_API_KEY") else []
 
     training_args = SFTConfig(
         output_dir=args.output_dir,
