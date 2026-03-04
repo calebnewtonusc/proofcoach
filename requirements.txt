@@ -30,7 +30,7 @@ fake-useragent>=1.5.1
 
 # Data processing
 sympy>=1.13.0
-latex2sympy2>=2.0.0
+latex2sympy2>=1.9.0
 pylatexenc>=2.10
 numpy>=1.26.4
 pandas>=2.2.2

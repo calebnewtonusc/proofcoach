@@ -156,7 +156,7 @@ async def merge_and_dedup(synth_dir: Path, train_dir: Path) -> None:
                     if turn.get("role") == "user":
                         content_key = turn["content"][:200]
                         break
-                h = hashlib.md5(content_key.encode()).hexdigest()
+                h = hashlib.md5(content_key.encode(), usedforsecurity=False).hexdigest()
                 if h in seen_hashes:
                     continue
                 seen_hashes.add(h)

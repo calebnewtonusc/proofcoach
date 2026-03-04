@@ -564,7 +564,7 @@ class AoPSCrawler:
         """Anonymize a username for privacy."""
         import hashlib
 
-        return "user_" + hashlib.md5(username.encode()).hexdigest()[:8]
+        return "user_" + hashlib.md5(username.encode(), usedforsecurity=False).hexdigest()[:8]
 
     async def _fetch(self, url: str) -> Optional[str]:
         """Fetch a URL with rate limiting and retries."""

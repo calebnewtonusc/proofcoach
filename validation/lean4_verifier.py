@@ -423,7 +423,7 @@ def score_proof_quality(
         score += 0.10
 
     # Elegance: short proof with modern tactics
-    proof_lines = [l for l in proof.splitlines() if l.strip()]
+    proof_lines = [line for line in proof.splitlines() if line.strip()]
     line_count = len(proof_lines)
     is_elegant = line_count <= 10 and bool(modern_used) and not has_sorry
 
@@ -469,7 +469,7 @@ def verify_proof(
     tactics = extract_tactics(proof)
     proof_type = detect_proof_type(proof)
     has_sorry = bool(SORRY_PATTERN.search(proof))
-    proof_lines = [l for l in proof.splitlines() if l.strip()]
+    proof_lines = [line for line in proof.splitlines() if line.strip()]
 
     quality_score, is_elegant = score_proof_quality(
         proof, syntax_valid, binary_verified, tactics

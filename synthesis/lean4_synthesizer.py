@@ -231,9 +231,9 @@ def score_proof(lean_code: str, is_verified: bool, is_syntax_valid: bool) -> flo
 
     # Elegance: shorter proofs are better
     lines = [
-        l
-        for l in lean_code.splitlines()
-        if l.strip() and not l.strip().startswith("--")
+        line
+        for line in lean_code.splitlines()
+        if line.strip() and not line.strip().startswith("--")
     ]
     n_lines = len(lines)
     if n_lines <= 5:
@@ -444,7 +444,7 @@ class Lean4Synthesizer:
                 return None
 
             tactics = extract_tactics(lean4_proof)
-            n_lines = len([l for l in lean4_proof.splitlines() if l.strip()])
+            n_lines = len([line for line in lean4_proof.splitlines() if line.strip()])
 
             result = Lean4ProofResult(
                 theorem_id=theorem_id,

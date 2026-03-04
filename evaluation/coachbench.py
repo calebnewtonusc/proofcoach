@@ -114,11 +114,11 @@ class CoachBench:
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Loading model for evaluation: {model_path}")
-        self._tokenizer = AutoTokenizer.from_pretrained(
+        self._tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
             model_path, trust_remote_code=True
         )
         try:
-            self._model = AutoModelForCausalLM.from_pretrained(
+            self._model = AutoModelForCausalLM.from_pretrained(  # nosec B615
                 model_path,
                 torch_dtype=torch.bfloat16,
                 device_map="auto",
@@ -129,7 +129,7 @@ class CoachBench:
             logger.warning(
                 "flash_attention_2 not available; falling back to eager attention"
             )
-            self._model = AutoModelForCausalLM.from_pretrained(
+            self._model = AutoModelForCausalLM.from_pretrained(  # nosec B615
                 model_path,
                 torch_dtype=torch.bfloat16,
                 device_map="auto",

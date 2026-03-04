@@ -25,17 +25,17 @@ Launch:
     --output-dir checkpoints/proofcoach-final
 """
 
-import argparse
-import json
-import os
-from pathlib import Path
+import argparse  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-import torch
-from datasets import Dataset
-from loguru import logger
-from peft import LoraConfig, TaskType, get_peft_model
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainerCallback
-from trl import DPOConfig, DPOTrainer
+import torch  # noqa: E402
+from datasets import Dataset  # noqa: E402
+from loguru import logger  # noqa: E402
+from peft import LoraConfig, TaskType, get_peft_model  # noqa: E402
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainerCallback  # noqa: E402
+from trl import DPOConfig, DPOTrainer  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -244,11 +244,11 @@ def main():
     logger.info(f"DPO beta: {args.beta}")
 
     # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)  # nosec B615
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(  # nosec B615
         args.base_model,
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
@@ -275,7 +275,7 @@ def main():
     model.print_trainable_parameters()
 
     # Reference model (frozen)
-    ref_model = AutoModelForCausalLM.from_pretrained(
+    ref_model = AutoModelForCausalLM.from_pretrained(  # nosec B615
         args.base_model,
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",

@@ -86,11 +86,11 @@ class MisconceptionDetectorAgent:
         self.use_pattern_matching = use_pattern_matching
 
         logger.info("Loading misconception detection model...")
-        self._tokenizer = AutoTokenizer.from_pretrained(
+        self._tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
             model_path, trust_remote_code=True
         )
         try:
-            self._model = AutoModelForCausalLM.from_pretrained(
+            self._model = AutoModelForCausalLM.from_pretrained(  # nosec B615
                 model_path,
                 torch_dtype=torch.bfloat16,
                 device_map=device,
@@ -101,7 +101,7 @@ class MisconceptionDetectorAgent:
             logger.warning(
                 "flash_attention_2 not available; falling back to eager attention"
             )
-            self._model = AutoModelForCausalLM.from_pretrained(
+            self._model = AutoModelForCausalLM.from_pretrained(  # nosec B615
                 model_path,
                 torch_dtype=torch.bfloat16,
                 device_map=device,

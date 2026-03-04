@@ -1,3 +1,4 @@
+---
 # ProofCoach RL Training Config
 # Stage 2: GRPO with Lean 4 proof verification reward
 # Reward = 0.50 * lean4_verified + 0.30 * pedagogical_rubric + 0.20 * length_penalty

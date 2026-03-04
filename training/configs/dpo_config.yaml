@@ -1,3 +1,4 @@
+---
 # ProofCoach DPO Training Config
 # Stage 3: Direct Preference Optimization on (chosen_dialogue, rejected_dialogue) pairs
 # Chosen = Socratic (hints, questions), Rejected = direct answer giving

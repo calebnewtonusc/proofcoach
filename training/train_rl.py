@@ -28,20 +28,20 @@ Launch:
     --output-dir checkpoints/proofcoach-rl
 """
 
-import argparse
-import json
-import os
-import random
-from pathlib import Path
-from typing import Optional
+import argparse  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import random  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Optional  # noqa: E402
 
-import torch
-import torch.nn.functional as F
-from loguru import logger
-from peft import LoraConfig, TaskType, get_peft_model
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch  # noqa: E402
+import torch.nn.functional as F  # noqa: E402
+from loguru import logger  # noqa: E402
+from peft import LoraConfig, TaskType, get_peft_model  # noqa: E402
+from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: E402
 
-from core.lean4_interface import Lean4Interface
+from core.lean4_interface import Lean4Interface  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -485,12 +485,12 @@ def main():
     logger.info(f"Lean 4 simulated: {args.simulated}")
 
     # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)  # nosec B615
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     # Policy model (trainable)
-    model = AutoModelForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(  # nosec B615
         args.base_model,
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
@@ -515,7 +515,7 @@ def main():
     model.train()
 
     # Frozen reference model
-    ref_model = AutoModelForCausalLM.from_pretrained(
+    ref_model = AutoModelForCausalLM.from_pretrained(  # nosec B615
         args.base_model,
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",

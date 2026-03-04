@@ -42,7 +42,7 @@ def deduplicate(examples: list[dict]) -> list[dict]:
         user_msg = next(
             (c.get("content", "") for c in conversations if c.get("role") == "user"), ""
         )
-        key = hashlib.md5(user_msg[:200].encode()).hexdigest()
+        key = hashlib.md5(user_msg[:200].encode(), usedforsecurity=False).hexdigest()
         if key not in seen:
             seen.add(key)
             unique.append(ex)
