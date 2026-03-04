@@ -1,4 +1,7 @@
-import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 train_dpo.py — Stage 3: DPO on Teaching Quality
 
@@ -25,9 +28,7 @@ Launch:
 import argparse
 import json
 import os
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import torch
 from datasets import Dataset
@@ -40,6 +41,7 @@ from trl import DPOConfig, DPOTrainer
 # ---------------------------------------------------------------------------
 # Dataset
 # ---------------------------------------------------------------------------
+
 
 class DPODataset:
     """
@@ -79,7 +81,7 @@ class DPODataset:
 
         if not records:
             raise ValueError(
-                f"No DPO pairs found. Run synthesis/generate_dpo_pairs.py first."
+                "No DPO pairs found. Run synthesis/generate_dpo_pairs.py first."
             )
 
         logger.info(f"Total DPO pairs: {len(records):,}")
@@ -142,17 +144,29 @@ class DPODataset:
                         },
                     ]
 
-                    pairs.append({
-                        "prompt": prompt,
-                        "chosen": [{"role": "assistant", "content": best.get("content", "")}],
-                        "rejected": [{"role": "assistant", "content": worst.get("content", "")}],
-                        "metadata": {
-                            "source": "aops_upvotes",
-                            "problem_id": problem.get("problem_id", ""),
-                            "chosen_upvotes": best.get("upvotes", 0),
-                            "rejected_upvotes": worst.get("upvotes", 0),
-                        },
-                    })
+                    pairs.append(
+                        {
+                            "prompt": prompt,
+                            "chosen": [
+                                {
+                                    "role": "assistant",
+                                    "content": best.get("content", ""),
+                                }
+                            ],
+                            "rejected": [
+                                {
+                                    "role": "assistant",
+                                    "content": worst.get("content", ""),
+                                }
+                            ],
+                            "metadata": {
+                                "source": "aops_upvotes",
+                                "problem_id": problem.get("problem_id", ""),
+                                "chosen_upvotes": best.get("upvotes", 0),
+                                "rejected_upvotes": worst.get("upvotes", 0),
+                            },
+                        }
+                    )
 
         return pairs
 
@@ -161,6 +175,7 @@ class DPODataset:
 # Callbacks
 # ---------------------------------------------------------------------------
 
+
 class DPOMetricsCallback(TrainerCallback):
     """Log DPO-specific metrics during training."""
 
@@ -168,7 +183,13 @@ class DPOMetricsCallback(TrainerCallback):
         if not logs:
             return
         step = state.global_step
-        keys = ["loss", "rewards/chosen", "rewards/rejected", "rewards/margins", "learning_rate"]
+        keys = [
+            "loss",
+            "rewards/chosen",
+            "rewards/rejected",
+            "rewards/margins",
+            "learning_rate",
+        ]
         parts = [f"Step {step:5d}"]
         for k in keys:
             if k in logs:
@@ -179,6 +200,7 @@ class DPOMetricsCallback(TrainerCallback):
 # ---------------------------------------------------------------------------
 # Data Formatting
 # ---------------------------------------------------------------------------
+
 
 def format_dpo_example(example: dict, tokenizer) -> dict:  # noqa: ARG001
     """
@@ -199,6 +221,7 @@ def format_dpo_example(example: dict, tokenizer) -> dict:  # noqa: ARG001
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="ProofCoach Stage 3: DPO")
@@ -235,9 +258,18 @@ def main():
     # LoRA for DPO
     lora_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
-        r=32, lora_alpha=64, lora_dropout=0.05,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj"],
+        r=32,
+        lora_alpha=64,
+        lora_dropout=0.05,
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
     )
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()

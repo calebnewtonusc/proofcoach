@@ -26,13 +26,14 @@ from core.problem_taxonomy import TAXONOMY, get_unlockable_topics
 @dataclass
 class TopicMastery:
     """Mastery estimate for a single topic."""
+
     topic_id: str
-    mastery_score: float = 0.0        # 0.0 = no evidence, 1.0 = fully mastered
+    mastery_score: float = 0.0  # 0.0 = no evidence, 1.0 = fully mastered
     attempts: int = 0
     successes: int = 0
     last_attempt_ts: Optional[float] = None
-    is_mastered: bool = False         # True when mastery_score > MASTERY_THRESHOLD
-    is_unlocked: bool = False         # True when all prerequisites are mastered
+    is_mastered: bool = False  # True when mastery_score > MASTERY_THRESHOLD
+    is_unlocked: bool = False  # True when all prerequisites are mastered
 
 
 @dataclass
@@ -42,6 +43,7 @@ class StudentModel:
 
     Tracks mastery per topic node, session history, and weak areas.
     """
+
     student_id: str
     created_ts: float = field(default_factory=time.time)
     last_active_ts: float = field(default_factory=time.time)
@@ -63,8 +65,8 @@ class StudentModel:
                 )
 
 
-MASTERY_THRESHOLD = 0.75    # Mastery score above which topic is "mastered"
-DECAY_RATE = 0.005          # Daily decay rate for inactive topics
+MASTERY_THRESHOLD = 0.75  # Mastery score above which topic is "mastered"
+DECAY_RATE = 0.005  # Daily decay rate for inactive topics
 
 
 class SkillModel:
@@ -83,7 +85,9 @@ class SkillModel:
         storage_dir: Optional[Path | str] = None,
         redis_url: Optional[str] = None,
     ) -> None:
-        self.storage_dir = Path(storage_dir) if storage_dir else Path("data/student_models")
+        self.storage_dir = (
+            Path(storage_dir) if storage_dir else Path("data/student_models")
+        )
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.redis_url = redis_url
         self._cache: dict[str, StudentModel] = {}
@@ -157,9 +161,7 @@ class SkillModel:
             mastery.is_mastered = mastery.mastery_score >= MASTERY_THRESHOLD
 
         # Unlock new topics if prerequisites are now mastered
-        mastered_topics = {
-            tid for tid, tm in model.topics.items() if tm.is_mastered
-        }
+        mastered_topics = {tid for tid, tm in model.topics.items() if tm.is_mastered}
         newly_unlockable = get_unlockable_topics(mastered_topics)
         for topic_id in newly_unlockable:
             if topic_id in model.topics:
@@ -176,7 +178,8 @@ class SkillModel:
         """
         model = self.get_or_create(student_id)
         unlocked = [
-            (tid, tm) for tid, tm in model.topics.items()
+            (tid, tm)
+            for tid, tm in model.topics.items()
             if tm.is_unlocked and not tm.is_mastered
         ]
         unlocked.sort(key=lambda x: x[1].mastery_score)

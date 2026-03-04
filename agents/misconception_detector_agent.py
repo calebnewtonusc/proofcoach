@@ -20,6 +20,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 @dataclass
 class MisconceptionDiagnosis:
     """Diagnosis of a student's misconception."""
+
     misconception_type: str
     description: str
     corrective_question: str
@@ -85,7 +86,9 @@ class MisconceptionDetectorAgent:
         self.use_pattern_matching = use_pattern_matching
 
         logger.info("Loading misconception detection model...")
-        self._tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            model_path, trust_remote_code=True
+        )
         try:
             self._model = AutoModelForCausalLM.from_pretrained(
                 model_path,
@@ -95,7 +98,9 @@ class MisconceptionDetectorAgent:
                 trust_remote_code=True,
             )
         except (ValueError, ImportError):
-            logger.warning("flash_attention_2 not available; falling back to eager attention")
+            logger.warning(
+                "flash_attention_2 not available; falling back to eager attention"
+            )
             self._model = AutoModelForCausalLM.from_pretrained(
                 model_path,
                 torch_dtype=torch.bfloat16,
@@ -165,10 +170,7 @@ class MisconceptionDetectorAgent:
         correct_answer: Optional[str],
     ) -> MisconceptionDiagnosis:
         """Use the trained model for complex misconception detection."""
-        user_content = (
-            f"Problem: {problem}\n\n"
-            f"Student's approach: {student_work}\n"
-        )
+        user_content = f"Problem: {problem}\n\nStudent's approach: {student_work}\n"
         if student_answer:
             user_content += f"Student's answer: {student_answer}\n"
         if correct_answer:
@@ -194,7 +196,7 @@ class MisconceptionDetectorAgent:
                 pad_token_id=self._tokenizer.eos_token_id,
             )
 
-        new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
+        new_tokens = outputs[0][inputs["input_ids"].shape[1] :]
         response = self._tokenizer.decode(new_tokens, skip_special_tokens=True)
 
         return self._parse_diagnosis(response, student_answer, correct_answer)
@@ -210,7 +212,7 @@ class MisconceptionDetectorAgent:
         sentences = re.split(r"(?<=[.!?])\s+", response.strip())
         corrective_question = next(
             (s for s in sentences if s.endswith("?")),
-            "Can you identify where your reasoning might break down?"
+            "Can you identify where your reasoning might break down?",
         )
 
         # Detect misconception type from response

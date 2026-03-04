@@ -17,13 +17,14 @@ from typing import Optional
 
 from loguru import logger
 
-from core.problem_taxonomy import TAXONOMY, get_unlockable_topics
+from core.problem_taxonomy import TAXONOMY
 from core.skill_model import SkillModel, StudentModel
 
 
 @dataclass
 class ProblemRecommendation:
     """A recommended practice problem."""
+
     problem_id: str
     competition: str
     year: int
@@ -172,6 +173,7 @@ class PracticeSequencerAgent:
 
     def _select_best(self, candidates: list[dict], target_difficulty: int) -> dict:
         """Select the best problem from candidates."""
+
         # Score by how close difficulty is to target
         def score(p: dict) -> float:
             diff = abs(p.get("difficulty_estimate", 5) - target_difficulty)
@@ -194,9 +196,11 @@ class PracticeSequencerAgent:
 
         for problems in self._problem_index.values():
             for p in problems:
-                if (p.get("difficulty_estimate", 5) >= level and
-                        p["problem_id"] not in student.problem_history[-20:] and
-                        p["problem_id"] not in session_history):
+                if (
+                    p.get("difficulty_estimate", 5) >= level
+                    and p["problem_id"] not in student.problem_history[-20:]
+                    and p["problem_id"] not in session_history
+                ):
                     candidates.append(p)
 
         if not candidates:
@@ -235,4 +239,6 @@ class PracticeSequencerAgent:
                 logger.warning(f"Failed to load {jsonl_file}: {e}")
 
         total = sum(len(v) for v in self._problem_index.values())
-        logger.info(f"Practice sequencer: loaded {total:,} problems from {len(self._problem_index)} competitions")
+        logger.info(
+            f"Practice sequencer: loaded {total:,} problems from {len(self._problem_index)} competitions"
+        )

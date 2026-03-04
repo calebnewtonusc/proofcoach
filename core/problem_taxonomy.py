@@ -10,20 +10,21 @@ The prerequisite graph ensures we never teach generating functions
 before counting basics — the system enforces correct pedagogical order.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
 @dataclass
 class TopicNode:
     """A node in the mathematical topic taxonomy."""
+
     id: str
     name: str
     description: str
-    category: str                    # "number_theory", "combinatorics", "algebra", "geometry"
-    prerequisites: list[str]         # IDs of prerequisite nodes
+    category: str  # "number_theory", "combinatorics", "algebra", "geometry"
+    prerequisites: list[str]  # IDs of prerequisite nodes
     difficulty_range: tuple[int, int]  # (min, max) difficulty 1-10
-    example_problems: list[str]      # Example problem IDs
+    example_problems: list[str]  # Example problem IDs
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +107,6 @@ TAXONOMY: dict[str, TopicNode] = {
         difficulty_range=(7, 10),
         example_problems=["USAMO-2015-06", "IMO-2013-02"],
     ),
-
     # -----------------------------------------------------------------------
     # Combinatorics
     # -----------------------------------------------------------------------
@@ -173,7 +173,6 @@ TAXONOMY: dict[str, TopicNode] = {
         difficulty_range=(5, 9),
         example_problems=["USAMO-2005-02", "IMO-2014-03"],
     ),
-
     # -----------------------------------------------------------------------
     # Algebra
     # -----------------------------------------------------------------------
@@ -222,7 +221,6 @@ TAXONOMY: dict[str, TopicNode] = {
         difficulty_range=(6, 10),
         example_problems=["IMO-2010-01", "USAMO-2010-04"],
     ),
-
     # -----------------------------------------------------------------------
     # Geometry
     # -----------------------------------------------------------------------
@@ -277,6 +275,7 @@ TAXONOMY: dict[str, TopicNode] = {
 # ---------------------------------------------------------------------------
 # Prerequisite Graph Operations
 # ---------------------------------------------------------------------------
+
 
 def get_prerequisites(topic_id: str, transitive: bool = True) -> set[str]:
     """

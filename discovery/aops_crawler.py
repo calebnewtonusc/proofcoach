@@ -11,11 +11,10 @@ Output: JSONL with problem, all community solutions, metadata
 import asyncio
 import json
 import re
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urljoin, urlparse, quote
+from urllib.parse import urljoin
 
 import aiofiles
 import aiohttp
@@ -28,14 +27,14 @@ AOPS_FORUM = f"{AOPS_BASE}/Forum"
 
 # Competition-specific wiki paths
 COMPETITION_PATHS = {
-    "AMC_8":  "AMC_8_Problems_and_Solutions",
+    "AMC_8": "AMC_8_Problems_and_Solutions",
     "AMC_10": "AMC_10_Problems_and_Solutions",
     "AMC_12": "AMC_12_Problems_and_Solutions",
-    "AIME":   "AIME_Problems_and_Solutions",
-    "USAMO":  "USAMO_Problems_and_Solutions",
-    "IMO":    "IMO_Problems_and_Solutions",
-    "HMMT":   "HMMT_Problems_and_Solutions",
-    "ARML":   "ARML_Problems_and_Solutions",
+    "AIME": "AIME_Problems_and_Solutions",
+    "USAMO": "USAMO_Problems_and_Solutions",
+    "IMO": "IMO_Problems_and_Solutions",
+    "HMMT": "HMMT_Problems_and_Solutions",
+    "ARML": "ARML_Problems_and_Solutions",
 }
 
 TOPIC_ARTICLES = [
@@ -60,6 +59,7 @@ TOPIC_ARTICLES = [
 @dataclass
 class AoPSSolution:
     """A single community solution post."""
+
     author: str
     content: str
     upvotes: int
@@ -70,6 +70,7 @@ class AoPSSolution:
 @dataclass
 class AoPSProblem:
     """A competition problem with all community solutions."""
+
     problem_id: str
     competition: str
     year: int
@@ -115,7 +116,9 @@ class AoPSCrawler:
         self.RATE_LIMIT = asyncio.Semaphore(10)  # max 10 concurrent requests
         # Initialised once here so _crawl_competition does not reset it for
         # every competition and break concurrent tasks that already hold it.
-        self._crawl_semaphore = asyncio.Semaphore(workers)  # per-competition page concurrency
+        self._crawl_semaphore = asyncio.Semaphore(
+            workers
+        )  # per-competition page concurrency
 
     async def __aenter__(self) -> "AoPSCrawler":
         headers = {
@@ -204,8 +207,11 @@ class AoPSCrawler:
             href = a["href"]
             # Match patterns like /wiki/2023_AMC_12A_Problems/Problem_15
             match = re.search(
-                r"/wiki/(\d{4})_" + re.escape(competition.replace("_", r"[_\s]")) + r"[_A-Z]*/Problem[_/](\d+)",
-                href, re.IGNORECASE
+                r"/wiki/(\d{4})_"
+                + re.escape(competition.replace("_", r"[_\s]"))
+                + r"[_A-Z]*/Problem[_/](\d+)",
+                href,
+                re.IGNORECASE,
             )
             if match:
                 year = int(match.group(1))
@@ -316,26 +322,34 @@ class AoPSCrawler:
                 heading = element.get_text()
                 if "Solution" in heading:
                     if in_solution and solution_text_parts:
-                        solutions.append(AoPSSolution(
-                            author="aops_wiki",
-                            content="\n".join(solution_text_parts).strip(),
-                            upvotes=0,
-                            approach_tags=self._infer_approach_tags("\n".join(solution_text_parts)),
-                            post_id=f"wiki_{solution_number}",
-                        ))
+                        solutions.append(
+                            AoPSSolution(
+                                author="aops_wiki",
+                                content="\n".join(solution_text_parts).strip(),
+                                upvotes=0,
+                                approach_tags=self._infer_approach_tags(
+                                    "\n".join(solution_text_parts)
+                                ),
+                                post_id=f"wiki_{solution_number}",
+                            )
+                        )
                         solution_text_parts = []
                     in_solution = True
                     solution_number += 1
                 elif in_solution:
                     # New non-solution section, stop
                     if solution_text_parts:
-                        solutions.append(AoPSSolution(
-                            author="aops_wiki",
-                            content="\n".join(solution_text_parts).strip(),
-                            upvotes=0,
-                            approach_tags=self._infer_approach_tags("\n".join(solution_text_parts)),
-                            post_id=f"wiki_{solution_number}",
-                        ))
+                        solutions.append(
+                            AoPSSolution(
+                                author="aops_wiki",
+                                content="\n".join(solution_text_parts).strip(),
+                                upvotes=0,
+                                approach_tags=self._infer_approach_tags(
+                                    "\n".join(solution_text_parts)
+                                ),
+                                post_id=f"wiki_{solution_number}",
+                            )
+                        )
                     in_solution = False
                     solution_text_parts = []
 
@@ -391,13 +405,15 @@ class AoPSCrawler:
 
             post_id = post_div.get("id", f"post_{len(solutions)}")
 
-            solutions.append(AoPSSolution(
-                author=self._anonymize(author),
-                content=content,
-                upvotes=upvotes,
-                approach_tags=self._infer_approach_tags(content),
-                post_id=post_id,
-            ))
+            solutions.append(
+                AoPSSolution(
+                    author=self._anonymize(author),
+                    content=content,
+                    upvotes=upvotes,
+                    approach_tags=self._infer_approach_tags(content),
+                    post_id=post_id,
+                )
+            )
 
         # Sort by upvotes descending — higher quality first
         solutions.sort(key=lambda s: s.upvotes, reverse=True)
@@ -438,12 +454,58 @@ class AoPSCrawler:
         all_text_lower = all_text.lower()
 
         topic_keywords = {
-            "number_theory": ["prime", "divisib", "modular", "gcd", "lcm", "congruent", "remainder", "fermat"],
-            "combinatorics": ["count", "combinat", "permut", "choose", "arrange", "pigeonhole", "generating function"],
-            "algebra": ["polynomial", "equation", "inequality", "sequence", "function", "factor", "vieta"],
-            "geometry": ["triangle", "circle", "angle", "perpendicular", "parallel", "chord", "tangent", "area"],
-            "probability": ["probabilit", "expected", "random", "event", "sample space"],
-            "calculus": ["limit", "derivative", "integral", "continuous", "differentiable"],
+            "number_theory": [
+                "prime",
+                "divisib",
+                "modular",
+                "gcd",
+                "lcm",
+                "congruent",
+                "remainder",
+                "fermat",
+            ],
+            "combinatorics": [
+                "count",
+                "combinat",
+                "permut",
+                "choose",
+                "arrange",
+                "pigeonhole",
+                "generating function",
+            ],
+            "algebra": [
+                "polynomial",
+                "equation",
+                "inequality",
+                "sequence",
+                "function",
+                "factor",
+                "vieta",
+            ],
+            "geometry": [
+                "triangle",
+                "circle",
+                "angle",
+                "perpendicular",
+                "parallel",
+                "chord",
+                "tangent",
+                "area",
+            ],
+            "probability": [
+                "probabilit",
+                "expected",
+                "random",
+                "event",
+                "sample space",
+            ],
+            "calculus": [
+                "limit",
+                "derivative",
+                "integral",
+                "continuous",
+                "differentiable",
+            ],
         }
 
         topics = []
@@ -460,7 +522,11 @@ class AoPSCrawler:
 
         approach_patterns = {
             "induction": ["induction", "base case", "inductive step"],
-            "contradiction": ["contradiction", "assume for contradiction", "suppose not"],
+            "contradiction": [
+                "contradiction",
+                "assume for contradiction",
+                "suppose not",
+            ],
             "casework": ["case 1", "case 2", "cases:", "split into"],
             "constructive": ["construct", "let us build", "we build"],
             "pigeonhole": ["pigeonhole", "by the pigeonhole"],
@@ -497,6 +563,7 @@ class AoPSCrawler:
     def _anonymize(self, username: str) -> str:
         """Anonymize a username for privacy."""
         import hashlib
+
         return "user_" + hashlib.md5(username.encode()).hexdigest()[:8]
 
     async def _fetch(self, url: str) -> Optional[str]:
@@ -504,7 +571,9 @@ class AoPSCrawler:
         async with self.RATE_LIMIT:
             for attempt in range(3):
                 try:
-                    await asyncio.sleep(self.DELAY_MIN + (self.DELAY_MAX - self.DELAY_MIN) * 0.5)
+                    await asyncio.sleep(
+                        self.DELAY_MIN + (self.DELAY_MAX - self.DELAY_MIN) * 0.5
+                    )
                     if self._session is None:
                         raise RuntimeError(
                             "AoPSCrawler._fetch called before session was initialised. "
@@ -515,7 +584,7 @@ class AoPSCrawler:
                         if response.status == 200:
                             return await response.text()
                         elif response.status == 429:
-                            wait = 2 ** attempt * 5
+                            wait = 2**attempt * 5
                             logger.warning(f"Rate limited. Waiting {wait}s...")
                             await asyncio.sleep(wait)
                         else:
@@ -524,13 +593,14 @@ class AoPSCrawler:
                 except Exception as e:
                     if attempt == 2:
                         logger.debug(f"Failed to fetch {url}: {e}")
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
         return None
 
 
 if __name__ == "__main__":
     import os
     from dotenv import load_dotenv
+
     load_dotenv()
 
     async def main():

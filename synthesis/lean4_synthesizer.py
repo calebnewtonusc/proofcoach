@@ -21,6 +21,7 @@ Usage:
 
 import sys
 from pathlib import Path as _Path
+
 sys.path.insert(0, str(_Path(__file__).parent.parent))
 
 import asyncio
@@ -42,8 +43,7 @@ try:
     import aiofiles
 except ImportError as exc:
     raise ImportError(
-        "aiofiles is required for lean4_synthesizer. "
-        "Install with: pip install aiofiles"
+        "aiofiles is required for lean4_synthesizer. Install with: pip install aiofiles"
     ) from exc
 import aiohttp
 import anthropic
@@ -51,7 +51,7 @@ from loguru import logger
 
 
 OUTPUT_DIR = Path(__file__).parents[1] / "data" / "synthesized"
-INPUT_DIR  = Path(__file__).parents[1] / "data" / "raw" / "lean4"
+INPUT_DIR = Path(__file__).parents[1] / "data" / "raw" / "lean4"
 
 LEAN4_SYSTEM_PROMPT = """You are an expert Lean 4 (Lean4) proof writer with deep knowledge of Mathlib4.
 
@@ -87,6 +87,7 @@ Write the complete compilable Lean 4 proof for this theorem."""
 @dataclass
 class Lean4ProofResult:
     """Result of synthesizing a Lean 4 proof."""
+
     theorem_id: str
     theorem_name: str
     theorem_statement: str
@@ -94,7 +95,7 @@ class Lean4ProofResult:
     lean4_proof: str
     syntax_valid: bool
     lean_verified: bool
-    proof_length: int      # number of lines (shorter = more elegant)
+    proof_length: int  # number of lines (shorter = more elegant)
     quality_score: float
     tactics_used: list[str]
     error_message: Optional[str] = None
@@ -118,12 +119,15 @@ def validate_lean4_syntax(lean_code: str) -> tuple[bool, Optional[str]]:
     if "sorry" in lean_code.lower() or "admit" in lean_code.lower():
         return False, "Proof uses sorry/admit placeholder"
 
-    if not any(keyword in lean_code for keyword in ["theorem", "lemma", "proposition", "def", "example"]):
+    if not any(
+        keyword in lean_code
+        for keyword in ["theorem", "lemma", "proposition", "def", "example"]
+    ):
         return False, "No theorem declaration found"
 
     # Check balanced angle brackets (common Lean 4 issue)
-    angle_open = lean_code.count("<")
-    angle_close = lean_code.count(">")
+    lean_code.count("<")
+    lean_code.count(">")
     paren_open = lean_code.count("(")
     paren_close = lean_code.count(")")
     bracket_open = lean_code.count("[")
@@ -134,9 +138,9 @@ def validate_lean4_syntax(lean_code: str) -> tuple[bool, Optional[str]]:
     if paren_open != paren_close:
         return False, f"Unbalanced parentheses: {paren_open} open, {paren_close} close"
     if bracket_open != bracket_close:
-        return False, f"Unbalanced brackets"
+        return False, "Unbalanced brackets"
     if curly_open != curly_close:
-        return False, f"Unbalanced curly braces"
+        return False, "Unbalanced curly braces"
 
     # Try running with Lean 4 if available
     if check_lean4_available():
@@ -195,7 +199,11 @@ def extract_lean4_proof(response: str) -> Optional[str]:
     in_code = False
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("import ") or stripped.startswith("theorem ") or stripped.startswith("lemma "):
+        if (
+            stripped.startswith("import ")
+            or stripped.startswith("theorem ")
+            or stripped.startswith("lemma ")
+        ):
             in_code = True
         if in_code:
             code_lines.append(line)
@@ -222,7 +230,11 @@ def score_proof(lean_code: str, is_verified: bool, is_syntax_valid: bool) -> flo
         score += 0.2  # Partial credit for syntactically valid
 
     # Elegance: shorter proofs are better
-    lines = [l for l in lean_code.splitlines() if l.strip() and not l.strip().startswith("--")]
+    lines = [
+        l
+        for l in lean_code.splitlines()
+        if l.strip() and not l.strip().startswith("--")
+    ]
     n_lines = len(lines)
     if n_lines <= 5:
         score += 0.3
@@ -249,14 +261,38 @@ def score_proof(lean_code: str, is_verified: bool, is_syntax_valid: bool) -> flo
 def extract_tactics(lean_code: str) -> list[str]:
     """Extract tactic names used in the proof."""
     all_tactics = [
-        "simp", "ring", "linarith", "omega", "norm_num", "decide",
-        "exact", "apply", "intro", "constructor", "ext", "rfl",
-        "cases", "induction", "rcases", "obtain", "have", "show",
-        "by_contra", "by_cases", "push_neg", "use", "refine",
-        "field_simp", "ring_nf", "positivity", "bound",
+        "simp",
+        "ring",
+        "linarith",
+        "omega",
+        "norm_num",
+        "decide",
+        "exact",
+        "apply",
+        "intro",
+        "constructor",
+        "ext",
+        "rfl",
+        "cases",
+        "induction",
+        "rcases",
+        "obtain",
+        "have",
+        "show",
+        "by_contra",
+        "by_cases",
+        "push_neg",
+        "use",
+        "refine",
+        "field_simp",
+        "ring_nf",
+        "positivity",
+        "bound",
     ]
     code_lower = lean_code.lower()
-    return [t for t in all_tactics if re.search(r"\b" + re.escape(t) + r"\b", code_lower)]
+    return [
+        t for t in all_tactics if re.search(r"\b" + re.escape(t) + r"\b", code_lower)
+    ]
 
 
 class Lean4Synthesizer:
@@ -338,7 +374,9 @@ class Lean4Synthesizer:
                         "max_tokens": 2000,
                         "temperature": 0.3,
                     },
-                    headers={"Authorization": f"Bearer {os.getenv('VLLM_API_KEY', 'synthesis')}"},
+                    headers={
+                        "Authorization": f"Bearer {os.getenv('VLLM_API_KEY', 'synthesis')}"
+                    },
                     timeout=aiohttp.ClientTimeout(total=90),
                 ) as resp:
                     if resp.status == 200:
@@ -369,7 +407,9 @@ class Lean4Synthesizer:
                 return None
 
             # Use existing proof as informal sketch
-            informal = existing_proof if existing_proof else f"Prove the theorem: {statement}"
+            informal = (
+                existing_proof if existing_proof else f"Prove the theorem: {statement}"
+            )
 
             user_prompt = LEAN4_USER_TEMPLATE.format(
                 informal_proof=informal[:2000],
@@ -472,7 +512,9 @@ class Lean4Synthesizer:
 
         if self.backend == "vllm":
             async with aiohttp.ClientSession() as session:
-                tasks = [self._synthesize_one(t, output_file, session) for t in theorems]
+                tasks = [
+                    self._synthesize_one(t, output_file, session) for t in theorems
+                ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
         else:
             tasks = [self._synthesize_one(t, output_file) for t in theorems]
@@ -482,7 +524,7 @@ class Lean4Synthesizer:
         succeeded = sum(1 for r in results if isinstance(r, Lean4ProofResult))
 
         logger.success(
-            f"Lean4 synthesis complete in {elapsed/60:.1f}m:\n"
+            f"Lean4 synthesis complete in {elapsed / 60:.1f}m:\n"
             f"  {self._stats['attempted']} attempted\n"
             f"  {self._stats['syntax_valid']} syntax valid\n"
             f"  {self._stats['lean_verified']} Lean verified\n"
@@ -495,6 +537,7 @@ class Lean4Synthesizer:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="Synthesize Lean 4 formal proofs")

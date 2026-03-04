@@ -28,8 +28,7 @@ Usage:
 import asyncio
 import json
 import re
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
 from html.parser import HTMLParser
@@ -47,27 +46,27 @@ OUTPUT_DIR = Path(__file__).parents[1] / "data" / "raw" / "khan_academy"
 # Math topic slugs and their curriculum ordering
 MATH_TOPICS = {
     # Foundational
-    "early-math":           {"order": 1,  "level": "elementary"},
-    "arithmetic":           {"order": 2,  "level": "elementary"},
-    "pre-algebra":          {"order": 3,  "level": "middle"},
-    "basic-geo":            {"order": 4,  "level": "middle"},
-    "cc-sixth-grade-math":  {"order": 5,  "level": "middle"},
+    "early-math": {"order": 1, "level": "elementary"},
+    "arithmetic": {"order": 2, "level": "elementary"},
+    "pre-algebra": {"order": 3, "level": "middle"},
+    "basic-geo": {"order": 4, "level": "middle"},
+    "cc-sixth-grade-math": {"order": 5, "level": "middle"},
     "cc-seventh-grade-math": {"order": 6, "level": "middle"},
-    "cc-eighth-grade-math": {"order": 7,  "level": "middle"},
+    "cc-eighth-grade-math": {"order": 7, "level": "middle"},
     # High school
-    "algebra":              {"order": 8,  "level": "high_school"},
-    "algebra2":             {"order": 9,  "level": "high_school"},
-    "geometry":             {"order": 10, "level": "high_school"},
-    "trigonometry":         {"order": 11, "level": "high_school"},
-    "precalculus":          {"order": 12, "level": "high_school"},
+    "algebra": {"order": 8, "level": "high_school"},
+    "algebra2": {"order": 9, "level": "high_school"},
+    "geometry": {"order": 10, "level": "high_school"},
+    "trigonometry": {"order": 11, "level": "high_school"},
+    "precalculus": {"order": 12, "level": "high_school"},
     "statistics-probability": {"order": 13, "level": "high_school"},
     # College
-    "ap-calculus-ab":       {"order": 14, "level": "college"},
-    "ap-calculus-bc":       {"order": 15, "level": "college"},
-    "ap-statistics":        {"order": 16, "level": "college"},
+    "ap-calculus-ab": {"order": 14, "level": "college"},
+    "ap-calculus-bc": {"order": 15, "level": "college"},
+    "ap-statistics": {"order": 16, "level": "college"},
     "multivariable-calculus": {"order": 17, "level": "college"},
     "differential-equations": {"order": 18, "level": "college"},
-    "linear-algebra":       {"order": 19, "level": "college"},
+    "linear-algebra": {"order": 19, "level": "college"},
 }
 
 
@@ -103,6 +102,7 @@ def html_to_text(html: str) -> str:
 @dataclass
 class KAHint:
     """A single hint step in a Khan Academy exercise."""
+
     step_number: int
     text: str
     has_image: bool = False
@@ -111,17 +111,18 @@ class KAHint:
 @dataclass
 class KAExercise:
     """A Khan Academy math exercise with hints and solution."""
+
     exercise_id: str
     title: str
     topic: str
     subtopic: str
-    difficulty: str       # "easy" | "medium" | "hard"
+    difficulty: str  # "easy" | "medium" | "hard"
     curriculum_order: int
-    level: str            # "elementary" | "middle" | "high_school" | "college"
+    level: str  # "elementary" | "middle" | "high_school" | "college"
     question_text: str
     hints: list[KAHint]
     worked_solution: str
-    answer_type: str      # "multiple_choice" | "numeric" | "expression" | "free_response"
+    answer_type: str  # "multiple_choice" | "numeric" | "expression" | "free_response"
     answer: Optional[str]
     prerequisites: list[str]
     tags: list[str]
@@ -152,7 +153,9 @@ class KhanAcademyHarvester:
         self._semaphore = asyncio.Semaphore(workers)
         self._stats = {"exercises": 0, "errors": 0}
 
-    async def _fetch_json(self, session: aiohttp.ClientSession, url: str, params: Optional[dict] = None) -> Optional[dict]:
+    async def _fetch_json(
+        self, session: aiohttp.ClientSession, url: str, params: Optional[dict] = None
+    ) -> Optional[dict]:
         """Fetch JSON from Khan Academy API with retry."""
         headers = {
             "User-Agent": "Mozilla/5.0 (ProofCoach Research)",
@@ -161,7 +164,12 @@ class KhanAcademyHarvester:
         for attempt in range(3):
             try:
                 await asyncio.sleep(self.DELAY)
-                async with session.get(url, params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                async with session.get(
+                    url,
+                    params=params,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=30),
+                ) as resp:
                     if resp.status == 200:
                         return await resp.json()
                     elif resp.status == 429:
@@ -173,7 +181,7 @@ class KhanAcademyHarvester:
                         return None
             except Exception as e:
                 logger.debug(f"Fetch error: {url}: {e}")
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
         return None
 
     async def _get_topic_exercises(
@@ -227,7 +235,12 @@ class KhanAcademyHarvester:
         return []
 
     def _parse_assessment_item(
-        self, item: dict, exercise_meta: dict, topic: str, curriculum_order: int, level: str
+        self,
+        item: dict,
+        exercise_meta: dict,
+        topic: str,
+        curriculum_order: int,
+        level: str,
     ) -> Optional[KAExercise]:
         """Parse a single assessment item into a KAExercise."""
         item_data = item.get("item_data", item)
@@ -270,11 +283,13 @@ class KhanAcademyHarvester:
         for i, hint in enumerate(hints_raw):
             hint_content = hint.get("content", "")
             if hint_content:
-                hints.append(KAHint(
-                    step_number=i + 1,
-                    text=html_to_text(hint_content),
-                    has_image="{{image" in hint_content.lower(),
-                ))
+                hints.append(
+                    KAHint(
+                        step_number=i + 1,
+                        text=html_to_text(hint_content),
+                        has_image="{{image" in hint_content.lower(),
+                    )
+                )
 
         # Extract answer type and answer
         answer_type = "free_response"
@@ -284,22 +299,40 @@ class KhanAcademyHarvester:
                 wtype = widget.get("type", "")
                 if wtype == "numeric-input":
                     answer_type = "numeric"
-                    answer = str(widget.get("props", {}).get("answers", [{}])[0].get("value", "")) if widget.get("props", {}).get("answers") else None
+                    answer = (
+                        str(
+                            widget.get("props", {})
+                            .get("answers", [{}])[0]
+                            .get("value", "")
+                        )
+                        if widget.get("props", {}).get("answers")
+                        else None
+                    )
                 elif wtype == "radio":
                     answer_type = "multiple_choice"
                     choices = widget.get("props", {}).get("choices", [])
-                    correct = [c.get("content", "") for c in choices if c.get("correct")]
+                    correct = [
+                        c.get("content", "") for c in choices if c.get("correct")
+                    ]
                     answer = html_to_text(correct[0]) if correct else None
                 elif wtype == "expression":
                     answer_type = "expression"
 
         # Exercise ID from KA
-        exercise_id = exercise_meta.get("id") or exercise_meta.get("internal_id") or exercise_meta.get("name", "unknown")
-        exercise_slug = exercise_meta.get("name") or exercise_meta.get("slug", exercise_id)
+        exercise_id = (
+            exercise_meta.get("id")
+            or exercise_meta.get("internal_id")
+            or exercise_meta.get("name", "unknown")
+        )
+        exercise_slug = exercise_meta.get("name") or exercise_meta.get(
+            "slug", exercise_id
+        )
 
         return KAExercise(
             exercise_id=f"{topic}_{exercise_id}_{item.get('sha', '')[:8]}",
-            title=exercise_meta.get("display_name", exercise_meta.get("title", exercise_slug)),
+            title=exercise_meta.get(
+                "display_name", exercise_meta.get("title", exercise_slug)
+            ),
             topic=topic,
             subtopic=exercise_meta.get("node_slug", ""),
             difficulty=exercise_meta.get("difficulty", "medium"),
@@ -333,7 +366,9 @@ class KhanAcademyHarvester:
             items = await self._get_exercise_items(session, exercise_id)
             if not items:
                 # Try the exercise itself as a single item
-                detail = await self._get_exercise_detail(session, exercise_meta.get("name", exercise_id))
+                detail = await self._get_exercise_detail(
+                    session, exercise_meta.get("name", exercise_id)
+                )
                 if detail:
                     items = [detail]
 
@@ -373,7 +408,9 @@ class KhanAcademyHarvester:
         logger.info(f"  {topic}: {len(exercises)} exercises found")
 
         tasks = [
-            self._process_exercise(session, ex, topic, curriculum_order, level, output_file)
+            self._process_exercise(
+                session, ex, topic, curriculum_order, level, output_file
+            )
             for ex in exercises
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -406,12 +443,14 @@ class KhanAcademyHarvester:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="Harvest Khan Academy math exercises")
     parser.add_argument("--all", action="store_true", help="Harvest all math topics")
-    parser.add_argument("--topics", nargs="+", default=None,
-                        help=f"Topics: {list(MATH_TOPICS.keys())}")
+    parser.add_argument(
+        "--topics", nargs="+", default=None, help=f"Topics: {list(MATH_TOPICS.keys())}"
+    )
     parser.add_argument("--output-dir", default="data/raw/khan_academy")
     parser.add_argument("--workers", type=int, default=15)
     parser.add_argument("--list", action="store_true", help="List available topics")

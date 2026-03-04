@@ -35,6 +35,7 @@ def get_tutor():
     global _tutor_agent
     if _tutor_agent is None:
         from agents.tutor_agent import TutorAgent
+
         _tutor_agent = TutorAgent(
             model_path=os.getenv("MODEL_PATH", "checkpoints/proofcoach-final")
         )
@@ -45,6 +46,7 @@ def get_verifier():
     global _verifier_agent
     if _verifier_agent is None:
         from agents.proof_verifier_agent import ProofVerifierAgent
+
         _verifier_agent = ProofVerifierAgent()
     return _verifier_agent
 
@@ -53,6 +55,7 @@ def get_detector():
     global _detector_agent
     if _detector_agent is None:
         from agents.misconception_detector_agent import MisconceptionDetectorAgent
+
         _detector_agent = MisconceptionDetectorAgent(
             model_path=os.getenv("MODEL_PATH", "checkpoints/proofcoach-final")
         )
@@ -63,6 +66,7 @@ def get_sequencer():
     global _sequencer_agent
     if _sequencer_agent is None:
         from agents.practice_sequencer_agent import PracticeSequencerAgent
+
         _sequencer_agent = PracticeSequencerAgent(
             problem_bank_dir=os.getenv("RAW_DATA_DIR", "data/raw")
         )
@@ -72,6 +76,7 @@ def get_sequencer():
 # ---------------------------------------------------------------------------
 # Request/Response models
 # ---------------------------------------------------------------------------
+
 
 class TutorRequest(BaseModel):
     problem: str

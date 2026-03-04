@@ -12,12 +12,13 @@ not an afterthought.
 
 import sys
 from pathlib import Path as _Path
+
 sys.path.insert(0, str(_Path(__file__).parent.parent))
 
 import asyncio
 import json
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -54,6 +55,7 @@ MISCONCEPTION_CATEGORIES = [
 @dataclass
 class MisconceptionPair:
     """A student misconception with diagnosis and corrective question."""
+
     problem_id: str
     problem_statement: str
     correct_answer: Optional[str]
@@ -173,7 +175,9 @@ class MisconceptionGenerator:
                 correct_answer=correct_answer or "varies",
             )
 
-            response = await self._call_llm(MISCONCEPTION_SYSTEM, prompt, max_tokens=600)
+            response = await self._call_llm(
+                MISCONCEPTION_SYSTEM, prompt, max_tokens=600
+            )
             if not response:
                 self._stats["failed"] += 1
                 return None
@@ -207,8 +211,7 @@ class MisconceptionGenerator:
         )
 
         assistant_content = (
-            f"I can see where your thinking led you. "
-            f"{pair.corrective_question}"
+            f"I can see where your thinking led you. {pair.corrective_question}"
         )
 
         return {
@@ -237,11 +240,17 @@ class MisconceptionGenerator:
         """Score misconception pair quality."""
         score = 0.5
 
-        if data.get("student_wrong_approach") and len(data["student_wrong_approach"]) > 50:
+        if (
+            data.get("student_wrong_approach")
+            and len(data["student_wrong_approach"]) > 50
+        ):
             score += 0.15
         if data.get("misconception_type") in MISCONCEPTION_CATEGORIES:
             score += 0.1
-        if data.get("misconception_description") and len(data["misconception_description"]) > 30:
+        if (
+            data.get("misconception_description")
+            and len(data["misconception_description"]) > 30
+        ):
             score += 0.1
         if data.get("corrective_question") and "?" in data["corrective_question"]:
             score += 0.15
@@ -255,7 +264,9 @@ class MisconceptionGenerator:
             return await self._call_claude(system, user, max_tokens)
         return await self._call_vllm(system, user, max_tokens)
 
-    async def _call_claude(self, system: str, user: str, max_tokens: int) -> Optional[str]:
+    async def _call_claude(
+        self, system: str, user: str, max_tokens: int
+    ) -> Optional[str]:
         try:
             resp = await self._claude.messages.create(
                 model="claude-opus-4-6",
@@ -268,7 +279,9 @@ class MisconceptionGenerator:
             logger.debug(f"Claude error: {e}")
             return None
 
-    async def _call_vllm(self, system: str, user: str, max_tokens: int) -> Optional[str]:
+    async def _call_vllm(
+        self, system: str, user: str, max_tokens: int
+    ) -> Optional[str]:
         if not self.vllm_urls:
             return None
         url = self.vllm_urls[self._vllm_index % len(self.vllm_urls)]
@@ -302,7 +315,9 @@ class MisconceptionGenerator:
         return None
 
     def _parse_json(self, text: str) -> Optional[dict]:
-        import re, json
+        import re
+        import json
+
         match = re.search(r"```(?:json)?\n?(.*?)\n?```", text, re.DOTALL)
         if match:
             text = match.group(1)
@@ -321,6 +336,7 @@ class MisconceptionGenerator:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser()

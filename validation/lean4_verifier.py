@@ -34,54 +34,118 @@ OUTPUT_DIR = Path(__file__).parents[1] / "data" / "verified"
 
 LEAN4_TACTICS = {
     # Core tactics
-    "intro", "intros", "apply", "exact", "refine", "rfl", "rfl?",
-    "simp", "simp?", "simp_all", "simp_all?",
-    "ring", "ring_nf", "ring?",
-    "omega", "linarith", "nlinarith",
-    "norm_num", "norm_num?", "norm_cast", "push_cast",
-    "decide", "native_decide",
-    "trivial", "tauto", "aesop",
-    "contradiction", "absurd", "exfalso",
-    "constructor", "left", "right",
-    "cases", "rcases", "obtain",
-    "induction", "induction_on",
-    "have", "let", "suffices", "show",
-    "use", "exists", "use_or",
-    "rw", "rw?", "rwa",
-    "unfold", "delta", "change",
-    "conv", "congr",
-    "split", "if_pos", "if_neg",
-    "push_neg", "contrapose",
-    "ext", "funext", "iff_intro",
-    "calc", "trans", "symm",
-    "assumption", "assumption?",
-    "done", "sorry",
-    "first", "try", "repeat", "iterate",
-    "all_goals", "any_goals", "on_goal",
-    "focus", "rotate_left", "rotate_right",
-    "field_simp", "positivity",
-    "gcongr", "mono",
+    "intro",
+    "intros",
+    "apply",
+    "exact",
+    "refine",
+    "rfl",
+    "rfl?",
+    "simp",
+    "simp?",
+    "simp_all",
+    "simp_all?",
+    "ring",
+    "ring_nf",
+    "ring?",
+    "omega",
+    "linarith",
+    "nlinarith",
+    "norm_num",
+    "norm_num?",
+    "norm_cast",
+    "push_cast",
+    "decide",
+    "native_decide",
+    "trivial",
+    "tauto",
+    "aesop",
+    "contradiction",
+    "absurd",
+    "exfalso",
+    "constructor",
+    "left",
+    "right",
+    "cases",
+    "rcases",
+    "obtain",
+    "induction",
+    "induction_on",
+    "have",
+    "let",
+    "suffices",
+    "show",
+    "use",
+    "exists",
+    "use_or",
+    "rw",
+    "rw?",
+    "rwa",
+    "unfold",
+    "delta",
+    "change",
+    "conv",
+    "congr",
+    "split",
+    "if_pos",
+    "if_neg",
+    "push_neg",
+    "contrapose",
+    "ext",
+    "funext",
+    "iff_intro",
+    "calc",
+    "trans",
+    "symm",
+    "assumption",
+    "assumption?",
+    "done",
+    "sorry",
+    "first",
+    "try",
+    "repeat",
+    "iterate",
+    "all_goals",
+    "any_goals",
+    "on_goal",
+    "focus",
+    "rotate_left",
+    "rotate_right",
+    "field_simp",
+    "positivity",
+    "gcongr",
+    "mono",
 }
 
 # Modern preferred tactics (higher quality signal)
-MODERN_TACTICS = {"omega", "ring", "simp", "linarith", "norm_num", "aesop", "gcongr", "positivity"}
+MODERN_TACTICS = {
+    "omega",
+    "ring",
+    "simp",
+    "linarith",
+    "norm_num",
+    "aesop",
+    "gcongr",
+    "positivity",
+}
 
 # Anti-patterns
-SORRY_PATTERN = re.compile(r'\bsorry\b')
-ADMITTED_PATTERN = re.compile(r'\badmit\b')
+SORRY_PATTERN = re.compile(r"\bsorry\b")
+ADMITTED_PATTERN = re.compile(r"\badmit\b")
 
 # Lean 4 structure patterns
 LEAN4_PROOF_KEYWORDS = re.compile(
-    r'\b(by|theorem|lemma|proposition|def|noncomputable|protected|private)\b'
+    r"\b(by|theorem|lemma|proposition|def|noncomputable|protected|private)\b"
 )
 
-LEAN4_BLOCK_START = re.compile(r'\bby\s*$|\bby\s+\w')
-LEAN4_TERM_PROOF = re.compile(r':=\s*(?!by)')
+LEAN4_BLOCK_START = re.compile(r"\bby\s*$|\bby\s+\w")
+LEAN4_TERM_PROOF = re.compile(r":=\s*(?!by)")
 
 
 @dataclass
 class VerificationResult:
     """Result of verifying a single Lean 4 proof."""
+
     theorem_id: str
     theorem_name: str
     statement: str
@@ -94,12 +158,12 @@ class VerificationResult:
     binary_error: Optional[str]
 
     # Quality metrics
-    quality_score: float       # 0.0 – 1.0
+    quality_score: float  # 0.0 – 1.0
     has_sorry: bool
-    proof_type: str            # tactic | term | decide | sorry | unknown
+    proof_type: str  # tactic | term | decide | sorry | unknown
     tactics_used: list[str]
     proof_length_lines: int
-    is_elegant: bool           # short proof using modern tactics
+    is_elegant: bool  # short proof using modern tactics
 
     # Metadata
     verification_time_ms: float
@@ -167,17 +231,17 @@ def check_syntax(lean_code: str) -> tuple[bool, list[str]]:
             ch = line[i]
 
             # Line comment
-            if not in_string and i + 1 < len(line) and line[i:i+2] == "--":
+            if not in_string and i + 1 < len(line) and line[i : i + 2] == "--":
                 break  # rest of line is comment
 
             # Block comment start: /-
-            if not in_string and i + 1 < len(line) and line[i:i+2] == "/-":
+            if not in_string and i + 1 < len(line) and line[i : i + 2] == "/-":
                 in_comment = True
                 i += 2
                 continue
 
             # Block comment end: -/
-            if in_comment and i + 1 < len(line) and line[i:i+2] == "-/":
+            if in_comment and i + 1 < len(line) and line[i : i + 2] == "-/":
                 in_comment = False
                 i += 2
                 continue
@@ -226,7 +290,9 @@ def check_syntax(lean_code: str) -> tuple[bool, list[str]]:
 
     # Check for minimum Lean 4 structure
     has_keywords = bool(LEAN4_PROOF_KEYWORDS.search(lean_code))
-    has_definition = bool(re.search(r'\b(?:theorem|lemma|def|proposition)\s+\w', lean_code))
+    has_definition = bool(
+        re.search(r"\b(?:theorem|lemma|def|proposition)\s+\w", lean_code)
+    )
 
     if not has_keywords and not has_definition:
         errors.append("No Lean 4 structural keywords found (theorem/lemma/def/by)")
@@ -239,7 +305,9 @@ def check_syntax(lean_code: str) -> tuple[bool, list[str]]:
     return syntax_valid, errors
 
 
-def verify_with_lean_binary(lean_code: str, timeout: int = 30) -> tuple[bool, Optional[str]]:
+def verify_with_lean_binary(
+    lean_code: str, timeout: int = 30
+) -> tuple[bool, Optional[str]]:
     """
     Verify a Lean 4 proof using the lean binary.
 
@@ -297,7 +365,7 @@ def extract_tactics(proof: str) -> list[str]:
     """Extract tactic names used in a Lean 4 proof."""
     found = []
     for tactic in LEAN4_TACTICS:
-        pattern = rf'\b{re.escape(tactic)}\b'
+        pattern = rf"\b{re.escape(tactic)}\b"
         if re.search(pattern, proof):
             found.append(tactic)
     return sorted(found)
@@ -309,7 +377,10 @@ def detect_proof_type(proof: str) -> str:
         return "sorry"
     if "native_decide" in proof:
         return "decide"
-    if re.search(r'\bdecide\b(?!\s*=)', proof) and "by" not in proof.split("decide")[0][-20:]:
+    if (
+        re.search(r"\bdecide\b(?!\s*=)", proof)
+        and "by" not in proof.split("decide")[0][-20:]
+    ):
         return "decide"
     if "by" in proof:
         return "tactic"
@@ -508,7 +579,7 @@ class Lean4VerifierBatch:
                     proof = content
 
             # Extract lean4 code from assistant response
-            lean_match = re.search(r'```(?:lean4?|lean)\n(.*?)```', proof, re.DOTALL)
+            lean_match = re.search(r"```(?:lean4?|lean)\n(.*?)```", proof, re.DOTALL)
             if lean_match:
                 proof = lean_match.group(1).strip()
 
@@ -522,7 +593,9 @@ class Lean4VerifierBatch:
             record.get("proof", record.get("response", "")),
         )
 
-    async def _verify_batch_async(self, records: list[dict]) -> list[VerificationResult]:
+    async def _verify_batch_async(
+        self, records: list[dict]
+    ) -> list[VerificationResult]:
         """Verify records in bounded-concurrency async batches."""
         semaphore = asyncio.Semaphore(self.workers)
         # PC-20: asyncio.get_event_loop() is deprecated in Python 3.10+ when
@@ -539,7 +612,11 @@ class Lean4VerifierBatch:
                 result = await loop.run_in_executor(
                     None,
                     verify_proof,
-                    tid, tname, stmt, proof, self.use_binary,
+                    tid,
+                    tname,
+                    stmt,
+                    proof,
+                    self.use_binary,
                 )
                 return result
 
@@ -608,31 +685,40 @@ def verify_single(lean_code: str, use_binary: bool = False) -> dict:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="Verify Lean 4 proofs from JSONL")
     parser.add_argument(
-        "--input", required=True,
+        "--input",
+        required=True,
         help="Input JSONL file (lean4_mathlib.py or lean4_synthesizer.py output)",
     )
     parser.add_argument(
-        "--output", default=None,
+        "--output",
+        default=None,
         help="Output JSONL file (default: data/verified/<input_stem>_verified.jsonl)",
     )
     parser.add_argument(
-        "--full", action="store_true",
+        "--full",
+        action="store_true",
         help="Use Lean binary for full verification (requires Lean 4 installed)",
     )
     parser.add_argument(
-        "--min-score", type=float, default=0.3,
+        "--min-score",
+        type=float,
+        default=0.3,
         help="Minimum quality score to include in output (default: 0.3)",
     )
     parser.add_argument(
-        "--workers", type=int, default=8,
+        "--workers",
+        type=int,
+        default=8,
         help="Async workers for parallel verification (default: 8)",
     )
     parser.add_argument(
-        "--single", default=None,
+        "--single",
+        default=None,
         help="Verify a single inline Lean 4 proof string",
     )
     args = parser.parse_args()

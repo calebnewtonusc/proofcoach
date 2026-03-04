@@ -1,4 +1,7 @@
-import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 train.py — Stage 1: SFT on Socratic tutoring dialogues
 
@@ -20,7 +23,6 @@ Launch:
 
 import argparse
 import json
-import math
 import os
 from pathlib import Path
 
@@ -73,15 +75,16 @@ def load_dataset(data_dir: str) -> tuple[Dataset, Dataset]:
 
         if not all_records:
             raise FileNotFoundError(
-                f"No training data found in {data_dir}. "
-                "Run synthesis pipeline first."
+                f"No training data found in {data_dir}. Run synthesis pipeline first."
             )
 
         split_idx = int(len(all_records) * 0.95)
         train_records = all_records[:split_idx]
         val_records = all_records[split_idx:]
 
-    logger.info(f"Train: {len(train_records):,} examples, Val: {len(val_records):,} examples")
+    logger.info(
+        f"Train: {len(train_records):,} examples, Val: {len(val_records):,} examples"
+    )
     return Dataset.from_list(train_records), Dataset.from_list(val_records)
 
 
@@ -124,8 +127,13 @@ def build_lora_config() -> LoraConfig:
         lora_alpha=128,
         lora_dropout=0.05,
         target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
         ],
         bias="none",
     )

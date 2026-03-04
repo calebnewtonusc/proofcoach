@@ -21,7 +21,6 @@ Usage:
 import asyncio
 import json
 import re
-import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
@@ -39,15 +38,16 @@ OUTPUT_DIR = Path(__file__).parents[1] / "data" / "raw" / "olympiads"
 @dataclass
 class OlympiadProblem:
     """A competition math problem with full solution."""
+
     problem_id: str
     competition: str
     year: int
     number: int
     statement: str
-    solutions: list[str]          # May have multiple solutions
-    answer: Optional[str]         # Numerical answer for AMC/AIME
-    answer_type: str              # "multiple_choice" | "integer" | "proof"
-    difficulty: int               # 1-10
+    solutions: list[str]  # May have multiple solutions
+    answer: Optional[str]  # Numerical answer for AMC/AIME
+    answer_type: str  # "multiple_choice" | "integer" | "proof"
+    difficulty: int  # 1-10
     source_url: str
     topics: list[str]
 
@@ -122,7 +122,7 @@ COMPETITIONS = {
     },
     "Putnam": {
         "years": list(range(1938, 2025)),
-        "problems": 12,     # 6 A + 6 B
+        "problems": 12,  # 6 A + 6 B
         "answer_type": "proof",
         "wiki_template": "{year}_Putnam_Problems",
     },
@@ -158,14 +158,46 @@ def _infer_topics(statement: str, solutions: list[str]) -> list[str]:
     """Infer math topics from problem content."""
     text = (statement + " ".join(solutions)).lower()
     topic_keywords = {
-        "number_theory": ["prime", "divisib", "modular", "gcd", "lcm", "congruent", "remainder"],
-        "combinatorics": ["count", "combinat", "permut", "choose", "arrange", "pigeonhole"],
-        "algebra": ["polynomial", "equation", "inequalit", "sequence", "function", "factor"],
-        "geometry": ["triangle", "circle", "angle", "perpendicular", "parallel", "chord", "tangent"],
+        "number_theory": [
+            "prime",
+            "divisib",
+            "modular",
+            "gcd",
+            "lcm",
+            "congruent",
+            "remainder",
+        ],
+        "combinatorics": [
+            "count",
+            "combinat",
+            "permut",
+            "choose",
+            "arrange",
+            "pigeonhole",
+        ],
+        "algebra": [
+            "polynomial",
+            "equation",
+            "inequalit",
+            "sequence",
+            "function",
+            "factor",
+        ],
+        "geometry": [
+            "triangle",
+            "circle",
+            "angle",
+            "perpendicular",
+            "parallel",
+            "chord",
+            "tangent",
+        ],
         "probability": ["probabilit", "expected", "random", "event"],
         "calculus": ["limit", "derivative", "integral", "continuous"],
     }
-    return [t for t, kws in topic_keywords.items() if any(kw in text for kw in kws)] or ["general"]
+    return [
+        t for t, kws in topic_keywords.items() if any(kw in text for kw in kws)
+    ] or ["general"]
 
 
 class OlympiadHarvester:
@@ -192,7 +224,9 @@ class OlympiadHarvester:
         for attempt in range(3):
             try:
                 await asyncio.sleep(self.DELAY)
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=30)
+                ) as resp:
                     if resp.status == 200:
                         return await resp.text()
                     elif resp.status == 404:
@@ -204,7 +238,7 @@ class OlympiadHarvester:
             except Exception as e:
                 if attempt == 2:
                     logger.debug(f"Fetch failed for {url}: {e}")
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
         return None
 
     def _extract_statement(self, soup: BeautifulSoup) -> str:
@@ -219,7 +253,10 @@ class OlympiadHarvester:
                 continue
             if elem.name in ("h2", "h3"):
                 heading = elem.get_text()
-                if any(kw in heading for kw in ("Solution", "See Also", "Problem", "Shortlist")):
+                if any(
+                    kw in heading
+                    for kw in ("Solution", "See Also", "Problem", "Shortlist")
+                ):
                     break
             if elem.name in ("p", "dl", "ul", "ol", "div"):
                 text = elem.get_text()
@@ -331,7 +368,9 @@ class OlympiadHarvester:
                 topics=topics,
             )
 
-    async def _harvest_competition(self, session: aiohttp.ClientSession, competition: str) -> int:
+    async def _harvest_competition(
+        self, session: aiohttp.ClientSession, competition: str
+    ) -> int:
         """Harvest all problems for a single competition."""
         config = COMPETITIONS[competition]
         output_file = self.output_dir / f"{competition.lower()}.jsonl"
@@ -385,13 +424,16 @@ class OlympiadHarvester:
             # Find problem links on the year page
             for problem_num in range(1, 7):
                 # Problems listed in a table with links like problem.aspx?year=YYYY&problem=N
-                prob_url = f"{IMO_OFFICIAL}/problem_shortlist.aspx?year={year}"
                 problem_links = soup.find_all("a", href=re.compile(r"problem\.aspx"))
 
                 for link in problem_links:
                     href = link.get("href", "")
                     if f"problem={problem_num}" in href:
-                        full_url = f"{IMO_OFFICIAL}/{href}" if not href.startswith("http") else href
+                        full_url = (
+                            f"{IMO_OFFICIAL}/{href}"
+                            if not href.startswith("http")
+                            else href
+                        )
 
                         prob_html = await self._fetch(session, full_url)
                         if not prob_html:
@@ -399,7 +441,9 @@ class OlympiadHarvester:
 
                         prob_soup = BeautifulSoup(prob_html, "lxml")
                         # Extract problem text from the official page
-                        text_div = prob_soup.find("div", class_="problem_statement") or prob_soup.find("td", class_="problem_body")
+                        text_div = prob_soup.find(
+                            "div", class_="problem_statement"
+                        ) or prob_soup.find("td", class_="problem_body")
                         if text_div:
                             statement = text_div.get_text(separator="\n").strip()
                             if len(statement) > 30:
@@ -428,7 +472,9 @@ class OlympiadHarvester:
     async def harvest_all(self) -> int:
         """Harvest all configured competitions."""
         async with aiohttp.ClientSession(
-            headers={"User-Agent": "ProofCoach-Research/1.0 (calebnewtonusc@gmail.com)"},
+            headers={
+                "User-Agent": "ProofCoach-Research/1.0 (calebnewtonusc@gmail.com)"
+            },
             timeout=aiohttp.ClientTimeout(total=60),
         ) as session:
             total = 0
@@ -449,21 +495,30 @@ class OlympiadHarvester:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="Harvest competition math problems")
     parser.add_argument("--all", action="store_true", help="Harvest all competitions")
-    parser.add_argument("--competition", nargs="+", default=None,
-                        help=f"Competitions: {list(COMPETITIONS.keys())}")
+    parser.add_argument(
+        "--competition",
+        nargs="+",
+        default=None,
+        help=f"Competitions: {list(COMPETITIONS.keys())}",
+    )
     parser.add_argument("--output-dir", default="data/raw/olympiads")
     parser.add_argument("--workers", type=int, default=10)
-    parser.add_argument("--list", action="store_true", help="List available competitions")
+    parser.add_argument(
+        "--list", action="store_true", help="List available competitions"
+    )
     args = parser.parse_args()
 
     if args.list:
         for comp, cfg in COMPETITIONS.items():
             n_problems = len(cfg["years"]) * cfg["problems"]
-            print(f"  {comp:<15} {n_problems:>6} problems  ({min(cfg['years'])}-{max(cfg['years'])})")
+            print(
+                f"  {comp:<15} {n_problems:>6} problems  ({min(cfg['years'])}-{max(cfg['years'])})"
+            )
         raise SystemExit(0)
 
     competitions = list(COMPETITIONS.keys()) if args.all else args.competition

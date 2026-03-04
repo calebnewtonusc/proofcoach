@@ -40,8 +40,7 @@ def deduplicate(examples: list[dict]) -> list[dict]:
     for ex in examples:
         conversations = ex.get("conversations", [])
         user_msg = next(
-            (c.get("content", "") for c in conversations if c.get("role") == "user"),
-            ""
+            (c.get("content", "") for c in conversations if c.get("role") == "user"), ""
         )
         key = hashlib.md5(user_msg[:200].encode()).hexdigest()
         if key not in seen:
@@ -54,7 +53,8 @@ def deduplicate(examples: list[dict]) -> list[dict]:
 def filter_quality(examples: list[dict], min_score: float = 0.5) -> list[dict]:
     """Filter by quality score if available."""
     filtered = [
-        ex for ex in examples
+        ex
+        for ex in examples
         if ex.get("metadata", {}).get("quality_score", 1.0) >= min_score
     ]
     logger.info(f"After quality filter: {len(filtered):,} examples")
@@ -97,8 +97,7 @@ def main():
             f.write(json.dumps(ex) + "\n")
 
     logger.success(
-        f"Train: {len(train):,} | Val: {len(val):,} | "
-        f"Written to {output_dir}"
+        f"Train: {len(train):,} | Val: {len(val):,} | Written to {output_dir}"
     )
 
 

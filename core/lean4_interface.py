@@ -17,7 +17,6 @@ Example:
     # result.success = True, reward = +1.0
 """
 
-import json
 import os
 import re
 import subprocess
@@ -33,6 +32,7 @@ from loguru import logger
 @dataclass
 class VerificationResult:
     """Result of a Lean 4 proof verification."""
+
     theorem: str
     success: bool
     message: str
@@ -91,7 +91,9 @@ class Lean4Interface:
         try:
             result = subprocess.run(
                 [self.lean_executable, "--version"],
-                capture_output=True, text=True, timeout=5
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode != 0 or "Lean" not in result.stdout:
                 raise RuntimeError(f"Lean 4 not found: {result.stderr}")
@@ -122,9 +124,7 @@ class Lean4Interface:
         # Build the Lean 4 file
         lean_content = self._build_lean_file(theorem, tactic)
 
-        with tempfile.NamedTemporaryFile(
-            suffix=".lean", mode="w", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".lean", mode="w", delete=False) as f:
             f.write(lean_content)
             lean_file = f.name
 
@@ -137,7 +137,9 @@ class Lean4Interface:
             )
             elapsed_ms = (time.time() - start_time) * 1000
 
-            success = result.returncode == 0 and not self._has_errors(result.stdout + result.stderr)
+            success = result.returncode == 0 and not self._has_errors(
+                result.stdout + result.stderr
+            )
             message = (result.stderr or result.stdout).strip()
 
             return VerificationResult(
@@ -166,6 +168,7 @@ class Lean4Interface:
         Used during RL training to verify N=4 completions per prompt.
         """
         from concurrent.futures import ThreadPoolExecutor
+
         workers = int(os.getenv("LEAN4_WORKERS", 8))
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -197,7 +200,7 @@ class Lean4Interface:
         This is a heuristic approach — for complex claims, LLM-based translation
         is used during synthesis. This covers common patterns.
         """
-        claim_lower = claim.lower()
+        claim.lower()
 
         # Common patterns
         if re.search(r"n\^?2 - 1 = \(n-1\)\(n\+1\)", claim):
@@ -245,8 +248,11 @@ class Lean4Interface:
             return False
 
         error_indicators = [
-            "error:", "Error:", "unknown identifier",
-            "type mismatch", "application type mismatch",
+            "error:",
+            "Error:",
+            "unknown identifier",
+            "type mismatch",
+            "application type mismatch",
         ]
         return any(ind in output for ind in error_indicators)
 
@@ -325,7 +331,8 @@ class Lean4Server:
         return {
             "verified": result.success,
             "lean4_proof": lean4_thm if result.success else None,
-            "explanation": result.message or ("Verified" if result.success else "Verification failed"),
+            "explanation": result.message
+            or ("Verified" if result.success else "Verification failed"),
             "elapsed_ms": result.elapsed_ms,
             "reward": result.reward,
         }

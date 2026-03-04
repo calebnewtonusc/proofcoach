@@ -1,4 +1,7 @@
-import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 train_rl.py — Stage 2: GRPO RL with Lean 4 Verification Reward
 
@@ -27,26 +30,24 @@ Launch:
 
 import argparse
 import json
-import math
 import os
 import random
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import torch
 import torch.nn.functional as F
-from datasets import Dataset
 from loguru import logger
 from peft import LoraConfig, TaskType, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from core.lean4_interface import Lean4Interface, VerificationResult
+from core.lean4_interface import Lean4Interface
 
 
 # ---------------------------------------------------------------------------
 # Reward Function
 # ---------------------------------------------------------------------------
+
 
 class Lean4VerificationReward:
     """
@@ -67,7 +68,9 @@ class Lean4VerificationReward:
             timeout=timeout,
             simulated=simulated or os.getenv("LEAN4_SIMULATED", "0") == "1",
         )
-        logger.info(f"Lean4VerificationReward initialized (simulated={self._lean4.simulated})")
+        logger.info(
+            f"Lean4VerificationReward initialized (simulated={self._lean4.simulated})"
+        )
 
     def compute_rewards(
         self,
@@ -104,9 +107,13 @@ class Lean4VerificationReward:
 
         if not claims:
             # No formal claims — check for correct numerical answer
-            if correct_answer and self._contains_correct_answer(completion, correct_answer):
+            if correct_answer and self._contains_correct_answer(
+                completion, correct_answer
+            ):
                 return 0.3  # Partial credit
-            return -0.2  # Slight negative for no formal claims (but not harshly penalized)
+            return (
+                -0.2
+            )  # Slight negative for no formal claims (but not harshly penalized)
 
         # Verify all claims
         results = self._lean4.verify_batch(claims)
@@ -131,6 +138,7 @@ class Lean4VerificationReward:
     def _contains_correct_answer(self, completion: str, correct_answer: str) -> bool:
         """Check if the completion contains the correct answer."""
         import re
+
         # Normalize: remove whitespace and compare
         answer_norm = re.sub(r"\s+", "", correct_answer.lower())
         completion_lower = completion.lower()
@@ -148,6 +156,7 @@ class Lean4VerificationReward:
 # GRPO Algorithm
 # ---------------------------------------------------------------------------
 
+
 def compute_advantages(rewards: list[float]) -> list[float]:
     """
     Compute group-relative advantages for GRPO.
@@ -156,6 +165,7 @@ def compute_advantages(rewards: list[float]) -> list[float]:
       advantage_i = (reward_i - mean(rewards)) / (std(rewards) + eps)
     """
     import numpy as np
+
     rewards_np = np.array(rewards, dtype=np.float32)
     mean = rewards_np.mean()
     std = rewards_np.std() + 1e-8
@@ -181,7 +191,9 @@ def compute_log_probs(
             f"response_start ({response_start}) >= seq_len-1 ({seq_len - 1}); "
             "completion was truncated. Returning zero log-prob."
         )
-        return torch.zeros(input_ids.shape[0], device=input_ids.device, requires_grad=True)
+        return torch.zeros(
+            input_ids.shape[0], device=input_ids.device, requires_grad=True
+        )
 
     with torch.no_grad() if not model.training else torch.enable_grad():
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
@@ -189,18 +201,22 @@ def compute_log_probs(
 
     # Shift logits/labels for causal LM
     logits = logits[:, response_start:-1, :]
-    labels = input_ids[:, response_start + 1:]
+    labels = input_ids[:, response_start + 1 :]
 
     # Guard: labels should be non-empty after slicing
     if labels.shape[1] == 0:
-        logger.warning("labels tensor has length 0 — completion was truncated. Returning zero log-prob.")
-        return torch.zeros(input_ids.shape[0], device=input_ids.device, requires_grad=True)
+        logger.warning(
+            "labels tensor has length 0 — completion was truncated. Returning zero log-prob."
+        )
+        return torch.zeros(
+            input_ids.shape[0], device=input_ids.device, requires_grad=True
+        )
 
     log_probs = F.log_softmax(logits, dim=-1)
     token_log_probs = log_probs.gather(2, labels.unsqueeze(-1)).squeeze(-1)
 
     # Mask padding
-    mask = attention_mask[:, response_start + 1:]
+    mask = attention_mask[:, response_start + 1 :]
     token_log_probs = token_log_probs * mask
     return token_log_probs.sum(dim=-1)  # (batch,)
 
@@ -220,11 +236,15 @@ def compute_grpo_loss(
     Loss = -mean(advantage * log_prob) + kl_coef * KL(policy || reference)
     """
     # Policy log probs
-    policy_log_probs = compute_log_probs(model, input_ids, attention_mask, response_start)
+    policy_log_probs = compute_log_probs(
+        model, input_ids, attention_mask, response_start
+    )
 
     # Reference log probs (frozen SFT model)
     with torch.no_grad():
-        ref_log_probs = compute_log_probs(ref_model, input_ids, attention_mask, response_start)
+        ref_log_probs = compute_log_probs(
+            ref_model, input_ids, attention_mask, response_start
+        )
 
     # KL divergence penalty
     kl = policy_log_probs - ref_log_probs
@@ -288,6 +308,7 @@ def pad_batch(sequences: list[torch.Tensor], pad_value: int) -> torch.Tensor:
 # Training Loop
 # ---------------------------------------------------------------------------
 
+
 class GRPOTrainer:
     """GRPO trainer for Lean 4 reward-based RL."""
 
@@ -329,7 +350,9 @@ class GRPOTrainer:
         """
         # Step 1: Generate completions
         all_completions = generate_completions(
-            self.model, self.tokenizer, prompts,
+            self.model,
+            self.tokenizer,
+            prompts,
             n_completions=self.n_completions,
             max_new_tokens=self.max_new_tokens,
         )
@@ -338,9 +361,15 @@ class GRPOTrainer:
         total_reward = 0.0
         n_batches = 0
 
-        for prompt_idx, (prompt, completions) in enumerate(zip(prompts, all_completions)):
+        for prompt_idx, (prompt, completions) in enumerate(
+            zip(prompts, all_completions)
+        ):
             # Step 2: Compute rewards
-            answers = [problem_answers[prompt_idx]] * self.n_completions if problem_answers else None
+            answers = (
+                [problem_answers[prompt_idx]] * self.n_completions
+                if problem_answers
+                else None
+            )
             rewards = self.reward_fn.compute_rewards(
                 [prompt] * self.n_completions,
                 completions,
@@ -353,14 +382,16 @@ class GRPOTrainer:
             total_reward += sum(rewards) / len(rewards)
 
             # Step 4: Compute GRPO loss over completions
-            for comp_idx, (completion, adv) in enumerate(zip(completions, advantages_tensor)):
+            for comp_idx, (completion, adv) in enumerate(
+                zip(completions, advantages_tensor)
+            ):
                 full_text = prompt + completion
                 encoding = self.tokenizer(
                     full_text, return_tensors="pt", truncation=True, max_length=2048
                 ).to(self.model.device)
-                prompt_enc = self.tokenizer(
-                    prompt, return_tensors="pt"
-                ).to(self.model.device)
+                prompt_enc = self.tokenizer(prompt, return_tensors="pt").to(
+                    self.model.device
+                )
                 response_start = prompt_enc["input_ids"].shape[1]
 
                 loss = compute_grpo_loss(
@@ -420,10 +451,12 @@ def load_rl_prompts(data_dir: str) -> list[dict]:
                     messages.append({"role": "assistant", "content": content})
 
             if messages:
-                prompts.append({
-                    "messages": messages,
-                    "answer": example.get("metadata", {}).get("answer"),
-                })
+                prompts.append(
+                    {
+                        "messages": messages,
+                        "answer": example.get("metadata", {}).get("answer"),
+                    }
+                )
 
     logger.info(f"Loaded {len(prompts):,} RL training prompts")
     return prompts
@@ -465,9 +498,18 @@ def main():
     )
     lora_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
-        r=32, lora_alpha=64, lora_dropout=0.05,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj"],
+        r=32,
+        lora_alpha=64,
+        lora_dropout=0.05,
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
     )
     model = get_peft_model(model, lora_config)
     model.train()
@@ -515,11 +557,15 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Starting GRPO training: {args.steps} steps, batch_size={args.batch_size}")
+    logger.info(
+        f"Starting GRPO training: {args.steps} steps, batch_size={args.batch_size}"
+    )
 
     for step in range(args.steps):
         # Sample batch
-        batch_data = random.sample(prompts_data, min(args.batch_size, len(prompts_data)))
+        batch_data = random.sample(
+            prompts_data, min(args.batch_size, len(prompts_data))
+        )
 
         prompts = []
         answers = []

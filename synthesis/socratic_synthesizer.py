@@ -22,6 +22,7 @@ Usage:
 
 import sys
 from pathlib import Path as _Path
+
 sys.path.insert(0, str(_Path(__file__).parent.parent))
 
 import asyncio
@@ -115,21 +116,25 @@ Rules:
 @dataclass
 class WrongAttempt:
     """A student's incorrect attempt on a problem."""
+
     problem_id: str
     problem_statement: str
     correct_answer: Optional[str]
     student_attempt: str
-    attempt_type: str    # "computation_error" | "wrong_formula" | "incomplete" | "misconception"
+    attempt_type: (
+        str  # "computation_error" | "wrong_formula" | "incomplete" | "misconception"
+    )
 
 
 @dataclass
 class SocraticDialogue:
     """A synthesized Socratic tutoring dialogue."""
+
     problem_id: str
     misconception: str
     key_insight: str
     turns: int
-    conversation: dict     # Full conversations format
+    conversation: dict  # Full conversations format
     quality_score: float
 
 
@@ -201,7 +206,9 @@ class SocraticSynthesizer:
         else:
             return await self._call_vllm(system, user, max_tokens, temperature, session)
 
-    async def _call_claude(self, system: str, user: str, max_tokens: int) -> Optional[str]:
+    async def _call_claude(
+        self, system: str, user: str, max_tokens: int
+    ) -> Optional[str]:
         try:
             resp = await self._anthropic.messages.create(
                 model="claude-opus-4-6",
@@ -238,7 +245,9 @@ class SocraticSynthesizer:
             async with session.post(
                 f"{url}/v1/chat/completions",
                 json=payload,
-                headers={"Authorization": f"Bearer {os.getenv('VLLM_API_KEY', 'synthesis')}"},
+                headers={
+                    "Authorization": f"Bearer {os.getenv('VLLM_API_KEY', 'synthesis')}"
+                },
                 timeout=aiohttp.ClientTimeout(total=90),
             ) as resp:
                 if resp.status == 200:
@@ -288,12 +297,21 @@ class SocraticSynthesizer:
         # Tutor turns contain questions
         tutor_turns = [t for t in turns if t.get("role") == "tutor"]
         if tutor_turns:
-            q_ratio = sum(1 for t in tutor_turns if "?" in t.get("content", "")) / len(tutor_turns)
+            q_ratio = sum(1 for t in tutor_turns if "?" in t.get("content", "")) / len(
+                tutor_turns
+            )
             score += 0.15 * q_ratio
 
         # No answer giveaway
         full_text = " ".join(t.get("content", "") for t in turns[:3]).lower()
-        if any(phrase in full_text for phrase in ["the answer is", "therefore the solution is", "the answer equals"]):
+        if any(
+            phrase in full_text
+            for phrase in [
+                "the answer is",
+                "therefore the solution is",
+                "the answer equals",
+            ]
+        ):
             score -= 0.3
 
         # Has key insight
@@ -333,17 +351,23 @@ class SocraticSynthesizer:
         # Check if we have forum solutions that might show wrong approaches
         if solutions and len(solutions) > 1:
             # The first solution is likely most standard; use a variation
-            first_sol = solutions[0].get("content", "") if isinstance(solutions[0], dict) else str(solutions[0])
+            first_sol = (
+                solutions[0].get("content", "")
+                if isinstance(solutions[0], dict)
+                else str(solutions[0])
+            )
             # Truncate to simulate a partial/wrong attempt
             if len(first_sol) > 100:
                 words = first_sol.split()
                 cutoff = max(20, len(words) // 3)
-                wrong_attempt_text = " ".join(words[:cutoff]) + "... [student gets stuck here]"
+                wrong_attempt_text = (
+                    " ".join(words[:cutoff]) + "... [student gets stuck here]"
+                )
                 attempt_type = "incomplete"
 
         if not wrong_attempt_text:
             # Generate a generic plausible wrong approach based on competition/topic
-            competition = problem.get("competition", "")
+            problem.get("competition", "")
             topics = problem.get("topics", [])
 
             if "number_theory" in topics:
@@ -403,7 +427,7 @@ class SocraticSynthesizer:
 
             misconception = misconception_data.get("misconception", "unclear error")
             key_insight = misconception_data.get("key_insight", "")
-            correct_hint = misconception_data.get("correct_approach_hint", "")
+            misconception_data.get("correct_approach_hint", "")
 
             # Phase 2: Generate Socratic dialogue
             dialogue_prompt = DIALOGUE_GENERATION_PROMPT.format(
@@ -438,8 +462,14 @@ class SocraticSynthesizer:
 
             # Format as training conversation (multi-turn)
             conversation_turns = [
-                {"role": "system", "content": dialogue_data.get("system", SOCRATIC_SYSTEM[:200])},
-                {"role": "user", "content": f"Problem: {attempt.problem_statement}\n\nMy work: {attempt.student_attempt}"},
+                {
+                    "role": "system",
+                    "content": dialogue_data.get("system", SOCRATIC_SYSTEM[:200]),
+                },
+                {
+                    "role": "user",
+                    "content": f"Problem: {attempt.problem_statement}\n\nMy work: {attempt.student_attempt}",
+                },
             ]
 
             # Add dialogue turns
@@ -513,7 +543,9 @@ class SocraticSynthesizer:
 
         if self.backend == "vllm":
             async with aiohttp.ClientSession() as session:
-                tasks = [self._synthesize_one(a, output_file, session) for a in attempts]
+                tasks = [
+                    self._synthesize_one(a, output_file, session) for a in attempts
+                ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
         else:
             tasks = [self._synthesize_one(a, output_file) for a in attempts]
@@ -523,7 +555,7 @@ class SocraticSynthesizer:
         succeeded = sum(1 for r in results if isinstance(r, SocraticDialogue))
 
         logger.success(
-            f"Socratic synthesis complete in {elapsed/60:.1f}m: "
+            f"Socratic synthesis complete in {elapsed / 60:.1f}m: "
             f"{self._stats['succeeded']} dialogues, "
             f"{self._stats['quality_filtered']} filtered, "
             f"{self._stats['failed']} failed"
@@ -534,9 +566,12 @@ class SocraticSynthesizer:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
-    parser = argparse.ArgumentParser(description="Synthesize Socratic tutoring dialogues")
+    parser = argparse.ArgumentParser(
+        description="Synthesize Socratic tutoring dialogues"
+    )
     parser.add_argument("--input-dir", default="data/raw/aops")
     parser.add_argument("--output-dir", default="data/synthesized/socratic")
     parser.add_argument("--backend", choices=["claude", "vllm"], default="claude")

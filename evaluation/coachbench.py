@@ -36,9 +36,16 @@ from core.lean4_interface import Lean4Interface
 
 BENCHMARK_PROBLEMS = [
     # AMC 10/12 — 80 problems
-    {"id": "AMC12-2023-A20", "competition": "AMC_12A", "year": 2023, "number": 20,
-     "statement": "Let $f(x) = x^4 + ax^3 + bx^2 + cx + d$. The roots of $f$ are $r_1, r_2, r_3, r_4$. What is the minimum value of $(r_1 r_2)^2 + (r_1 r_3)^2 + (r_1 r_4)^2 + (r_2 r_3)^2 + (r_2 r_4)^2 + (r_3 r_4)^2$ when $a = b = c = 0$?",
-     "answer": "0", "answer_type": "multiple_choice", "difficulty": 7},
+    {
+        "id": "AMC12-2023-A20",
+        "competition": "AMC_12A",
+        "year": 2023,
+        "number": 20,
+        "statement": "Let $f(x) = x^4 + ax^3 + bx^2 + cx + d$. The roots of $f$ are $r_1, r_2, r_3, r_4$. What is the minimum value of $(r_1 r_2)^2 + (r_1 r_3)^2 + (r_1 r_4)^2 + (r_2 r_3)^2 + (r_2 r_4)^2 + (r_3 r_4)^2$ when $a = b = c = 0$?",
+        "answer": "0",
+        "answer_type": "multiple_choice",
+        "difficulty": 7,
+    },
     # Additional problems would be loaded from data/raw in practice
     # This is a representative sample for demonstration
 ]
@@ -56,6 +63,7 @@ TARGETS = {
 @dataclass
 class ProblemResult:
     """Result of evaluating a single problem."""
+
     problem_id: str
     competition: str
     difficulty: int
@@ -72,6 +80,7 @@ class ProblemResult:
 @dataclass
 class BenchmarkResults:
     """Aggregated benchmark results."""
+
     model_path: str
     timestamp: float
     amc_accuracy: float
@@ -105,7 +114,9 @@ class CoachBench:
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Loading model for evaluation: {model_path}")
-        self._tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            model_path, trust_remote_code=True
+        )
         try:
             self._model = AutoModelForCausalLM.from_pretrained(
                 model_path,
@@ -115,7 +126,9 @@ class CoachBench:
                 trust_remote_code=True,
             )
         except (ValueError, ImportError):
-            logger.warning("flash_attention_2 not available; falling back to eager attention")
+            logger.warning(
+                "flash_attention_2 not available; falling back to eager attention"
+            )
             self._model = AutoModelForCausalLM.from_pretrained(
                 model_path,
                 torch_dtype=torch.bfloat16,
@@ -162,7 +175,9 @@ class CoachBench:
 
         amc_problems = [p for p in self._problems if "AMC" in p["competition"]]
         aime_problems = [p for p in self._problems if "AIME" in p["competition"]]
-        usamo_problems = [p for p in self._problems if p["competition"] in ("USAMO", "IMO")]
+        usamo_problems = [
+            p for p in self._problems if p["competition"] in ("USAMO", "IMO")
+        ]
 
         amc_results = [self._evaluate_problem(p) for p in amc_problems]
         aime_results = [self._evaluate_problem(p) for p in aime_problems]
@@ -170,11 +185,19 @@ class CoachBench:
 
         amc_acc = sum(r.is_correct for r in amc_results) / max(len(amc_results), 1)
         aime_acc = sum(r.is_correct for r in aime_results) / max(len(aime_results), 1)
-        usamo_qual = sum(r.is_correct for r in usamo_results) / max(len(usamo_results), 1)
+        usamo_qual = sum(r.is_correct for r in usamo_results) / max(
+            len(usamo_results), 1
+        )
 
-        logger.info(f"AMC accuracy: {amc_acc:.1%} (target: {TARGETS['amc_accuracy']:.0%})")
-        logger.info(f"AIME accuracy: {aime_acc:.1%} (target: {TARGETS['aime_accuracy']:.0%})")
-        logger.info(f"USAMO quality: {usamo_qual:.1%} (target: {TARGETS['usamo_quality']:.0%})")
+        logger.info(
+            f"AMC accuracy: {amc_acc:.1%} (target: {TARGETS['amc_accuracy']:.0%})"
+        )
+        logger.info(
+            f"AIME accuracy: {aime_acc:.1%} (target: {TARGETS['aime_accuracy']:.0%})"
+        )
+        logger.info(
+            f"USAMO quality: {usamo_qual:.1%} (target: {TARGETS['usamo_quality']:.0%})"
+        )
 
         return {
             "amc_accuracy": amc_acc,
@@ -207,7 +230,11 @@ class CoachBench:
             f"(target: {TARGETS['lean4_verification_rate']:.0%})"
         )
 
-        return {"verification_rate": rate, "verified": verified_claims, "total": total_claims}
+        return {
+            "verification_rate": rate,
+            "verified": verified_claims,
+            "total": total_claims,
+        }
 
     def run_teaching(self) -> dict:
         """
@@ -221,7 +248,9 @@ class CoachBench:
         logger.info("Running teaching effectiveness evaluation...")
 
         # Use a subset of AMC problems for teaching evaluation
-        teaching_problems = [p for p in self._problems if "AMC_10" in p.get("competition", "")][:20]
+        teaching_problems = [
+            p for p in self._problems if "AMC_10" in p.get("competition", "")
+        ][:20]
 
         improvements = []
         for problem in teaching_problems:
@@ -257,7 +286,9 @@ class CoachBench:
 
         model_answer = self._extract_answer(response, problem.get("answer_type", ""))
         correct_answer = problem.get("answer", "")
-        is_correct = self._check_answer(model_answer, correct_answer, problem.get("answer_type", ""))
+        is_correct = self._check_answer(
+            model_answer, correct_answer, problem.get("answer_type", "")
+        )
 
         claims = self._lean4.extract_claims_from_dialogue(response)
         verified = 0
@@ -285,8 +316,8 @@ class CoachBench:
             "You are ProofCoach. Solve this math problem step by step. "
             "Include your mathematical reasoning and, where possible, "
             "formal proof steps in Lean 4 (```lean ... ```)."
-            if include_proofs else
-            "You are ProofCoach. Solve this math problem. Show your work clearly."
+            if include_proofs
+            else "You are ProofCoach. Solve this math problem. Show your work clearly."
         )
 
         messages = [
@@ -308,7 +339,7 @@ class CoachBench:
                 pad_token_id=self._tokenizer.eos_token_id,
             )
 
-        new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
+        new_tokens = outputs[0][inputs["input_ids"].shape[1] :]
         return self._tokenizer.decode(new_tokens, skip_special_tokens=True)
 
     def _extract_answer(self, response: str, answer_type: str) -> Optional[str]:
@@ -348,7 +379,10 @@ class CoachBench:
         for p in self._problems:
             if p.get("id") == problem.get("id"):
                 continue
-            if p.get("competition") == competition and abs(p.get("difficulty", 5) - difficulty) <= 1:
+            if (
+                p.get("competition") == competition
+                and abs(p.get("difficulty", 5) - difficulty) <= 1
+            ):
                 if any(t in p.get("topics", []) for t in topics):
                     return p
 
@@ -361,6 +395,7 @@ class CoachBench:
         # across benchmark runs. Use problem id for per-problem seeding so the
         # fixed seed does not make all problems share the same random draw.
         import random
+
         rng = random.Random(hash(problem.get("id", "")) & 0xFFFFFFFF)
         difficulty = problem.get("difficulty", 5)
         success_prob = max(0.1, 0.9 - 0.1 * difficulty)
@@ -392,7 +427,8 @@ class CoachBench:
         ]
 
         import random
-        rng = random.Random(hash(problem.get("id", "tutoring")) & 0xFFFFFFFF)
+
+        random.Random(hash(problem.get("id", "tutoring")) & 0xFFFFFFFF)
 
         max_turns = 3
         for turn_idx in range(max_turns):
@@ -409,8 +445,10 @@ class CoachBench:
                     do_sample=True,
                     pad_token_id=self._tokenizer.eos_token_id,
                 )
-            new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
-            tutor_response = self._tokenizer.decode(new_tokens, skip_special_tokens=True)
+            new_tokens = outputs[0][inputs["input_ids"].shape[1] :]
+            tutor_response = self._tokenizer.decode(
+                new_tokens, skip_special_tokens=True
+            )
             messages.append({"role": "assistant", "content": tutor_response})
 
             # Simulated student follow-up (generic partial-understanding reply)
@@ -419,7 +457,12 @@ class CoachBench:
                 "That's helpful. I tried substituting but I'm still not seeing why the inequality holds.",
                 "I think I understand now. The key insight is that the terms cancel, right?",
             ]
-            messages.append({"role": "user", "content": student_replies[turn_idx % len(student_replies)]})
+            messages.append(
+                {
+                    "role": "user",
+                    "content": student_replies[turn_idx % len(student_replies)],
+                }
+            )
 
     def _check_targets(self, solving: dict, lean: dict, teaching: dict) -> bool:
         """Check if all benchmark targets are met."""
@@ -447,17 +490,19 @@ class CoachBench:
                         try:
                             p = json.loads(line)
                             if len(problems) < 200:
-                                problems.append({
-                                    "id": p.get("problem_id", ""),
-                                    "competition": p.get("competition", ""),
-                                    "year": p.get("year", 0),
-                                    "number": p.get("number", 0),
-                                    "statement": p.get("statement", ""),
-                                    "answer": p.get("answer", ""),
-                                    "answer_type": p.get("answer_type", "proof"),
-                                    "difficulty": p.get("difficulty_estimate", 5),
-                                    "topics": p.get("topics", []),
-                                })
+                                problems.append(
+                                    {
+                                        "id": p.get("problem_id", ""),
+                                        "competition": p.get("competition", ""),
+                                        "year": p.get("year", 0),
+                                        "number": p.get("number", 0),
+                                        "statement": p.get("statement", ""),
+                                        "answer": p.get("answer", ""),
+                                        "answer_type": p.get("answer_type", "proof"),
+                                        "difficulty": p.get("difficulty_estimate", 5),
+                                        "topics": p.get("topics", []),
+                                    }
+                                )
                         except Exception:
                             continue
 
@@ -481,18 +526,43 @@ class CoachBench:
         print("CoachBench Results Summary")
         print("=" * 60)
         rows = [
-            ("AMC 10/12 accuracy", f"{results.amc_accuracy:.1%}", f"{TARGETS['amc_accuracy']:.0%}",
-             "PASS" if results.amc_accuracy >= TARGETS["amc_accuracy"] else "FAIL"),
-            ("AIME accuracy", f"{results.aime_accuracy:.1%}", f"{TARGETS['aime_accuracy']:.0%}",
-             "PASS" if results.aime_accuracy >= TARGETS["aime_accuracy"] else "FAIL"),
-            ("USAMO quality", f"{results.usamo_quality:.1%}", f"{TARGETS['usamo_quality']:.0%}",
-             "PASS" if results.usamo_quality >= TARGETS["usamo_quality"] else "FAIL"),
-            ("Lean 4 verification", f"{results.lean4_verification_rate:.1%}",
-             f"{TARGETS['lean4_verification_rate']:.0%}",
-             "PASS" if results.lean4_verification_rate >= TARGETS["lean4_verification_rate"] else "FAIL"),
-            ("Teaching improvement", f"{results.teaching_improvement:.3f}" if results.teaching_improvement else "N/A",
-             f"{TARGETS['teaching_improvement']:.2f}",
-             "PASS" if (results.teaching_improvement or 0) >= TARGETS["teaching_improvement"] else "FAIL"),
+            (
+                "AMC 10/12 accuracy",
+                f"{results.amc_accuracy:.1%}",
+                f"{TARGETS['amc_accuracy']:.0%}",
+                "PASS" if results.amc_accuracy >= TARGETS["amc_accuracy"] else "FAIL",
+            ),
+            (
+                "AIME accuracy",
+                f"{results.aime_accuracy:.1%}",
+                f"{TARGETS['aime_accuracy']:.0%}",
+                "PASS" if results.aime_accuracy >= TARGETS["aime_accuracy"] else "FAIL",
+            ),
+            (
+                "USAMO quality",
+                f"{results.usamo_quality:.1%}",
+                f"{TARGETS['usamo_quality']:.0%}",
+                "PASS" if results.usamo_quality >= TARGETS["usamo_quality"] else "FAIL",
+            ),
+            (
+                "Lean 4 verification",
+                f"{results.lean4_verification_rate:.1%}",
+                f"{TARGETS['lean4_verification_rate']:.0%}",
+                "PASS"
+                if results.lean4_verification_rate >= TARGETS["lean4_verification_rate"]
+                else "FAIL",
+            ),
+            (
+                "Teaching improvement",
+                f"{results.teaching_improvement:.3f}"
+                if results.teaching_improvement
+                else "N/A",
+                f"{TARGETS['teaching_improvement']:.2f}",
+                "PASS"
+                if (results.teaching_improvement or 0)
+                >= TARGETS["teaching_improvement"]
+                else "FAIL",
+            ),
         ]
 
         for metric, value, target, status in rows:

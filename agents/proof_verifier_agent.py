@@ -12,12 +12,13 @@ from typing import Optional
 
 from loguru import logger
 
-from core.lean4_interface import Lean4Interface, Lean4Server, VerificationResult
+from core.lean4_interface import Lean4Interface, Lean4Server
 
 
 @dataclass
 class ProofVerificationResponse:
     """Response from the proof verifier agent."""
+
     verified: bool
     lean4_proof: Optional[str]
     explanation: str
@@ -100,13 +101,15 @@ class ProofVerifierAgent:
         for i, step in enumerate(steps):
             result = self._server.verify_claim(step)
             verified = result.get("verified", False)
-            steps_results.append({
-                "step": i + 1,
-                "claim": step,
-                "verified": verified,
-                "lean4": result.get("lean4_proof"),
-                "explanation": result.get("explanation", ""),
-            })
+            steps_results.append(
+                {
+                    "step": i + 1,
+                    "claim": step,
+                    "verified": verified,
+                    "lean4": result.get("lean4_proof"),
+                    "explanation": result.get("explanation", ""),
+                }
+            )
             total_elapsed += result.get("elapsed_ms", 0)
 
             if not verified:
@@ -134,9 +137,9 @@ class ProofVerifierAgent:
             )
         elif result.get("verified") is None:
             return (
-                f"I wasn't able to express this claim formally in Lean 4 automatically. "
-                f"This doesn't mean it's wrong — try providing a Lean 4 proof attempt, "
-                f"or we can discuss the reasoning informally."
+                "I wasn't able to express this claim formally in Lean 4 automatically. "
+                "This doesn't mean it's wrong — try providing a Lean 4 proof attempt, "
+                "or we can discuss the reasoning informally."
             )
         else:
             explanation = result.get("explanation", "")

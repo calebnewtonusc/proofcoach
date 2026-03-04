@@ -28,15 +28,16 @@ AOPS_WIKI = "https://artofproblemsolving.com/wiki/index.php"
 @dataclass
 class OlympiadProblem:
     """A single competition problem with official solution."""
+
     problem_id: str
     competition: str
     year: int
     number: int
     statement: str
     official_solution: Optional[str]
-    answer: Optional[str]          # For AMC/AIME with numerical answers
-    answer_type: str               # "multiple_choice", "integer", "proof"
-    difficulty_estimate: int       # 1-10
+    answer: Optional[str]  # For AMC/AIME with numerical answers
+    answer_type: str  # "multiple_choice", "integer", "proof"
+    difficulty_estimate: int  # 1-10
     source_url: str
 
 
@@ -129,13 +130,17 @@ class OlympiadDownloader:
             return
 
         output_file = self.output_dir / f"{competition.lower()}.jsonl"
-        logger.info(f"Downloading {competition} ({len(config['years'])} years × {config['problems']} problems)...")
+        logger.info(
+            f"Downloading {competition} ({len(config['years'])} years × {config['problems']} problems)..."
+        )
 
         tasks = []
         for year in config["years"]:
             for number in range(1, config["problems"] + 1):
                 tasks.append(
-                    self._download_problem(competition, year, number, config["answer_type"])
+                    self._download_problem(
+                        competition, year, number, config["answer_type"]
+                    )
                 )
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -315,7 +320,7 @@ class OlympiadDownloader:
             except Exception as e:
                 if attempt == 2:
                     logger.debug(f"Fetch failed for {url}: {e}")
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
         return None
 
 
@@ -349,17 +354,19 @@ class PutnamDownloader:
                             content = soup.find("div", class_="mw-parser-output")
                             if content:
                                 statement = content.get_text()[:2000]
-                                problems.append({
-                                    "problem_id": f"Putnam-{year}-{section}{number}",
-                                    "competition": "Putnam",
-                                    "year": year,
-                                    "section": section,
-                                    "number": number,
-                                    "statement": statement,
-                                    "answer_type": "proof",
-                                    "difficulty_estimate": 7 + (number > 4),
-                                    "source_url": url,
-                                })
+                                problems.append(
+                                    {
+                                        "problem_id": f"Putnam-{year}-{section}{number}",
+                                        "competition": "Putnam",
+                                        "year": year,
+                                        "section": section,
+                                        "number": number,
+                                        "statement": statement,
+                                        "answer_type": "proof",
+                                        "difficulty_estimate": 7 + (number > 4),
+                                        "source_url": url,
+                                    }
+                                )
 
             async with aiofiles.open(output_file, "w") as f:
                 for p in problems:
@@ -386,9 +393,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download olympiad problem archives")
     parser.add_argument("--output-dir", default="data/raw/olympiads")
     parser.add_argument("--workers", type=int, default=10)
-    parser.add_argument("--putnam", action="store_true", help="Download Putnam archives")
-    parser.add_argument("--competition", nargs="+", default=None,
-                        help="Specific competitions to download")
+    parser.add_argument(
+        "--putnam", action="store_true", help="Download Putnam archives"
+    )
+    parser.add_argument(
+        "--competition",
+        nargs="+",
+        default=None,
+        help="Specific competitions to download",
+    )
     args = parser.parse_args()
 
     async def main():

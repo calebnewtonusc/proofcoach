@@ -33,7 +33,7 @@ GITHUB_RAW = "https://raw.githubusercontent.com"
 
 TARGET_REPOS = [
     {"owner": "leanprover-community", "repo": "mathlib4", "branch": "master"},
-    {"owner": "leanprover",            "repo": "lean4",    "branch": "master"},
+    {"owner": "leanprover", "repo": "lean4", "branch": "master"},
     {"owner": "leanprover-community", "repo": "batteries", "branch": "main"},
 ]
 
@@ -43,6 +43,7 @@ OUTPUT_DIR = Path(__file__).parents[1] / "data" / "raw" / "lean4"
 @dataclass
 class Lean4Theorem:
     """A single theorem-proof pair extracted from a .lean file."""
+
     theorem_id: str
     repo: str
     file_path: str
@@ -50,13 +51,15 @@ class Lean4Theorem:
     namespace: str
     statement: str
     proof: str
-    proof_type: str          # "tactic" | "term" | "decide" | "simp" | "other"
+    proof_type: str  # "tactic" | "term" | "decide" | "simp" | "other"
     docstring: Optional[str]
     line_number: int
     tags: list[str]
 
 
-def extract_theorems_from_lean(content: str, file_path: str, repo: str) -> list[Lean4Theorem]:
+def extract_theorems_from_lean(
+    content: str, file_path: str, repo: str
+) -> list[Lean4Theorem]:
     """
     Parse a Lean 4 source file and extract all theorem-proof pairs.
 
@@ -75,13 +78,13 @@ def extract_theorems_from_lean(content: str, file_path: str, repo: str) -> list[
 
     # Regex patterns
     theorem_decl_re = re.compile(
-        r"^(?:@\[.*?\]\s*)*"                      # optional attributes
+        r"^(?:@\[.*?\]\s*)*"  # optional attributes
         r"(?:protected\s+|private\s+|public\s+)?"  # optional visibility
         r"(?:theorem|lemma|proposition)\s+"
-        r"(\w+)"                                   # name
-        r"([^:=]*?)"                               # params (lazy)
-        r"\s*:\s*"                                 # colon
-        r"(.+?)$",                                 # type (rest of line, may continue)
+        r"(\w+)"  # name
+        r"([^:=]*?)"  # params (lazy)
+        r"\s*:\s*"  # colon
+        r"(.+?)$",  # type (rest of line, may continue)
         re.MULTILINE,
     )
     namespace_re = re.compile(r"^namespace\s+(\w+)", re.MULTILINE)
@@ -124,8 +127,8 @@ def extract_theorems_from_lean(content: str, file_path: str, repo: str) -> list[
         decl_m = theorem_decl_re.match(line.strip())
         if decl_m:
             theorem_name = decl_m.group(1)
-            params = decl_m.group(2).strip()
-            statement_start = decl_m.group(3).strip()
+            decl_m.group(2).strip()
+            decl_m.group(3).strip()
 
             # Collect multi-line statement (until := or by or where)
             statement_lines = [line.strip()]
@@ -133,7 +136,11 @@ def extract_theorems_from_lean(content: str, file_path: str, repo: str) -> list[
             while j < n:
                 next_line = lines[j].strip()
                 statement_lines.append(next_line)
-                if ":=" in next_line or next_line.startswith("by ") or next_line == "by":
+                if (
+                    ":=" in next_line
+                    or next_line.startswith("by ")
+                    or next_line == "by"
+                ):
                     break
                 if next_line.startswith("theorem ") or next_line.startswith("lemma "):
                     j -= 1
@@ -174,7 +181,11 @@ def extract_theorems_from_lean(content: str, file_path: str, repo: str) -> list[
                             m += 1
                             continue
                         current_indent = len(lines[m]) - len(lines[m].lstrip())
-                        if current_indent <= base_indent and lines[m].strip() and not lines[m].strip().startswith("--"):
+                        if (
+                            current_indent <= base_indent
+                            and lines[m].strip()
+                            and not lines[m].strip().startswith("--")
+                        ):
                             break
                         proof_lines.append(lines[m])
                         m += 1
@@ -187,7 +198,11 @@ def extract_theorems_from_lean(content: str, file_path: str, repo: str) -> list[
                 proof_type = "simp"
             elif "decide" in proof_text:
                 proof_type = "decide"
-            elif "omega" in proof_text or "ring" in proof_text or "linarith" in proof_text:
+            elif (
+                "omega" in proof_text
+                or "ring" in proof_text
+                or "linarith" in proof_text
+            ):
                 proof_type = "tactic"
 
             # Skip very short statements (likely forward declarations)
@@ -196,24 +211,26 @@ def extract_theorems_from_lean(content: str, file_path: str, repo: str) -> list[
                 continue
 
             namespace = ".".join(namespace_stack)
-            theorem_id = f"{repo}/{file_path}:{i+1}:{theorem_name}"
+            theorem_id = f"{repo}/{file_path}:{i + 1}:{theorem_name}"
 
             # Infer math tags from statement
             tags = _infer_lean4_tags(full_statement, proof_text)
 
-            theorems.append(Lean4Theorem(
-                theorem_id=theorem_id,
-                repo=repo,
-                file_path=file_path,
-                theorem_name=theorem_name,
-                namespace=namespace,
-                statement=full_statement[:4000],
-                proof=proof_text[:4000],
-                proof_type=proof_type,
-                docstring=docstring,
-                line_number=i + 1,
-                tags=tags,
-            ))
+            theorems.append(
+                Lean4Theorem(
+                    theorem_id=theorem_id,
+                    repo=repo,
+                    file_path=file_path,
+                    theorem_name=theorem_name,
+                    namespace=namespace,
+                    statement=full_statement[:4000],
+                    proof=proof_text[:4000],
+                    proof_type=proof_type,
+                    docstring=docstring,
+                    line_number=i + 1,
+                    tags=tags,
+                )
+            )
             i = max(j, k) + 1
             continue
 
@@ -229,12 +246,36 @@ def _infer_lean4_tags(statement: str, proof: str) -> list[str]:
 
     topic_patterns = {
         "algebra": ["ring", "field", "group", "monoid", "module", "ideal", "algebra"],
-        "number_theory": ["nat", "int", "prime", "divisible", "gcd", "lcm", "modular", "zmod"],
+        "number_theory": [
+            "nat",
+            "int",
+            "prime",
+            "divisible",
+            "gcd",
+            "lcm",
+            "modular",
+            "zmod",
+        ],
         "topology": ["open", "closed", "continuous", "metric", "topological"],
-        "analysis": ["real", "complex", "limit", "deriv", "integral", "convergence", "series"],
+        "analysis": [
+            "real",
+            "complex",
+            "limit",
+            "deriv",
+            "integral",
+            "convergence",
+            "series",
+        ],
         "combinatorics": ["finset", "multiset", "permutation", "count", "card"],
         "logic": ["iff", "ite", "classical", "decidable", "propositional"],
-        "linear_algebra": ["matrix", "vector", "linear", "span", "basis", "determinant"],
+        "linear_algebra": [
+            "matrix",
+            "vector",
+            "linear",
+            "span",
+            "basis",
+            "determinant",
+        ],
         "category_theory": ["functor", "category", "morphism", "adjunction", "natural"],
         "order_theory": ["lattice", "poset", "orderiso", "completelattice"],
         "measure_theory": ["measure", "integral", "probability", "ae"],
@@ -255,7 +296,7 @@ class Lean4MathlibCrawler:
     then downloads each .lean file and extracts theorems.
     """
 
-    REQUEST_DELAY = 0.1   # seconds between requests
+    REQUEST_DELAY = 0.1  # seconds between requests
 
     def __init__(
         self,
@@ -273,43 +314,58 @@ class Lean4MathlibCrawler:
         self._stats = {"files": 0, "theorems": 0, "errors": 0}
 
     def _headers(self) -> dict:
-        h = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+        h = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
         if self.token:
             h["Authorization"] = f"Bearer {self.token}"
         return h
 
-    async def _fetch_json(self, session: aiohttp.ClientSession, url: str) -> Optional[dict]:
+    async def _fetch_json(
+        self, session: aiohttp.ClientSession, url: str
+    ) -> Optional[dict]:
         """Fetch GitHub API JSON with rate-limit handling."""
         for attempt in range(5):
             await asyncio.sleep(self.REQUEST_DELAY)
             try:
-                async with session.get(url, headers=self._headers(), timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                async with session.get(
+                    url,
+                    headers=self._headers(),
+                    timeout=aiohttp.ClientTimeout(total=30),
+                ) as resp:
                     if resp.status == 200:
                         return await resp.json()
                     elif resp.status in (403, 429):
                         remaining = int(resp.headers.get("X-RateLimit-Remaining", 1))
                         if remaining < 10:
-                            reset = int(resp.headers.get("X-RateLimit-Reset", time.time() + 60))
+                            reset = int(
+                                resp.headers.get("X-RateLimit-Reset", time.time() + 60)
+                            )
                             wait = max(1, reset - int(time.time())) + 5
                             logger.warning(f"Rate limited. Waiting {wait}s...")
                             await asyncio.sleep(wait)
                         else:
-                            await asyncio.sleep(2 ** attempt)
+                            await asyncio.sleep(2**attempt)
                     elif resp.status == 404:
                         return None
                     else:
-                        await asyncio.sleep(2 ** attempt)
+                        await asyncio.sleep(2**attempt)
             except Exception as e:
                 logger.debug(f"Fetch error ({url}): {e}")
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
         return None
 
-    async def _fetch_raw(self, session: aiohttp.ClientSession, url: str) -> Optional[str]:
+    async def _fetch_raw(
+        self, session: aiohttp.ClientSession, url: str
+    ) -> Optional[str]:
         """Fetch raw file content."""
         for attempt in range(3):
             await asyncio.sleep(0.05)
             try:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=30)
+                ) as resp:
                     if resp.status == 200:
                         return await resp.text(errors="replace")
                     elif resp.status == 429:
@@ -318,7 +374,7 @@ class Lean4MathlibCrawler:
                         return None
             except Exception as e:
                 logger.debug(f"Raw fetch error: {e}")
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
         return None
 
     async def _get_file_tree(
@@ -332,8 +388,10 @@ class Lean4MathlibCrawler:
             return []
         tree = data.get("tree", [])
         lean_files = [
-            f for f in tree
-            if f.get("type") == "blob" and f.get("path", "").endswith(".lean")
+            f
+            for f in tree
+            if f.get("type") == "blob"
+            and f.get("path", "").endswith(".lean")
             and ".lake/" not in f.get("path", "")
         ]
         logger.info(f"  {owner}/{repo}: {len(lean_files)} .lean files in tree")
@@ -375,7 +433,9 @@ class Lean4MathlibCrawler:
             self._stats["theorems"] += len(theorems)
             return len(theorems)
 
-    async def crawl_repo(self, session: aiohttp.ClientSession, repo_config: dict) -> int:
+    async def crawl_repo(
+        self, session: aiohttp.ClientSession, repo_config: dict
+    ) -> int:
         """Crawl a single repository."""
         owner = repo_config["owner"]
         repo = repo_config["repo"]
@@ -425,11 +485,16 @@ class Lean4MathlibCrawler:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
-    parser = argparse.ArgumentParser(description="Crawl Lean 4 Mathlib for theorem-proof pairs")
+    parser = argparse.ArgumentParser(
+        description="Crawl Lean 4 Mathlib for theorem-proof pairs"
+    )
     parser.add_argument("--output-dir", default="data/raw/lean4")
-    parser.add_argument("--repo", nargs="+", help="Specific repos: mathlib4 lean4 batteries")
+    parser.add_argument(
+        "--repo", nargs="+", help="Specific repos: mathlib4 lean4 batteries"
+    )
     parser.add_argument("--workers", type=int, default=20)
     args = parser.parse_args()
 

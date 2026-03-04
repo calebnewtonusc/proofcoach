@@ -27,7 +27,10 @@ load_dotenv()
 
 # Configure logging
 logger.remove()
-logger.add(sys.stderr, format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | {message}")
+logger.add(
+    sys.stderr,
+    format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | {message}",
+)
 logger.add("logs/pipeline_{time}.log", rotation="100 MB")
 
 RAW_DIR = Path(os.getenv("RAW_DATA_DIR", "./data/raw"))
@@ -39,6 +42,7 @@ TRAIN_DIR = Path(os.getenv("TRAIN_DATA_DIR", "./data/train"))
 # Collect
 # ---------------------------------------------------------------------------
 
+
 async def run_collect(args) -> None:
     """Download all raw data: AMC/AIME/USAMO/IMO, AoPS solutions, Putnam."""
     RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -46,18 +50,23 @@ async def run_collect(args) -> None:
     if args.olympiads or args.all_data:
         logger.info("Downloading AMC/AIME/USAMO/IMO archives...")
         from discovery.olympiad_downloader import OlympiadDownloader
+
         downloader = OlympiadDownloader(output_dir=RAW_DIR / "olympiads")
         await downloader.download_all_competitions()
 
     if args.aops or args.all_data:
         logger.info("Crawling AoPS wiki and forum solutions...")
         from discovery.aops_crawler import AoPSCrawler
-        async with AoPSCrawler(output_dir=RAW_DIR / "aops", workers=args.workers) as crawler:
+
+        async with AoPSCrawler(
+            output_dir=RAW_DIR / "aops", workers=args.workers
+        ) as crawler:
             await crawler.crawl_all()
 
     if args.putnam or args.all_data:
         logger.info("Downloading Putnam archives...")
         from discovery.olympiad_downloader import PutnamDownloader
+
         downloader = PutnamDownloader(output_dir=RAW_DIR / "putnam")
         await downloader.download_all()
 
@@ -67,6 +76,7 @@ async def run_collect(args) -> None:
 # ---------------------------------------------------------------------------
 # Synthesize
 # ---------------------------------------------------------------------------
+
 
 async def run_synthesize(args) -> None:
     """Generate Socratic tutoring dialogues and misconception pairs."""
@@ -82,6 +92,7 @@ async def run_synthesize(args) -> None:
     if args.teaching or args.all_synth:
         logger.info("Synthesizing Socratic tutoring dialogues...")
         from synthesis.teaching_synthesizer import TeachingSynthesizer
+
         synthesizer = TeachingSynthesizer(
             raw_dir=RAW_DIR,
             output_dir=SYNTH_DIR / "teaching",
@@ -94,6 +105,7 @@ async def run_synthesize(args) -> None:
     if args.misconceptions or args.all_synth:
         logger.info("Generating misconception diagnosis pairs...")
         from synthesis.misconception_generator import MisconceptionGenerator
+
         generator = MisconceptionGenerator(
             raw_dir=RAW_DIR,
             output_dir=SYNTH_DIR / "misconceptions",
@@ -106,6 +118,7 @@ async def run_synthesize(args) -> None:
     if args.dpo_pairs or args.all_synth:
         logger.info("Generating DPO preference pairs...")
         from synthesis.generate_dpo_pairs import DPOPairGenerator
+
         generator = DPOPairGenerator(
             synth_dir=SYNTH_DIR,
             output_dir=SYNTH_DIR / "dpo",
@@ -155,6 +168,7 @@ async def merge_and_dedup(synth_dir: Path, train_dir: Path) -> None:
     # all topics/competitions rather than a contiguous slice of the last
     # competition processed (which would be biased by crawl order).
     import random
+
     random.seed(42)
     random.shuffle(all_examples)
 
@@ -177,6 +191,7 @@ async def merge_and_dedup(synth_dir: Path, train_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 # Lean 4 Verification
 # ---------------------------------------------------------------------------
+
 
 async def run_verify_lean(args) -> None:
     """Batch-verify all mathematical claims in the training set with Lean 4."""
@@ -210,7 +225,9 @@ async def run_verify_lean(args) -> None:
             example["lean4_verified"] = all_verified
             fout.write(json.dumps(example) + "\n")
 
-    logger.info(f"Lean 4 verification: {verified}/{total} claims verified ({100*verified/max(total,1):.1f}%)")
+    logger.info(
+        f"Lean 4 verification: {verified}/{total} claims verified ({100 * verified / max(total, 1):.1f}%)"
+    )
     logger.info(f"Examples with all claims verified: written to {verified_file}")
 
 
@@ -222,6 +239,7 @@ def extract_lean4_claims(example: dict) -> list[str]:
             content = turn.get("content", "")
             # Look for lean4_claim markers in the content
             import re
+
             for match in re.finditer(r"```lean\n(.*?)\n```", content, re.DOTALL):
                 claims.append(match.group(1).strip())
     return claims
@@ -230,6 +248,7 @@ def extract_lean4_claims(example: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 # Train
 # ---------------------------------------------------------------------------
+
 
 def run_train(args) -> None:
     """Run all 3 training stages via subprocess (requires DeepSpeed)."""
@@ -241,32 +260,43 @@ def run_train(args) -> None:
     if args.sft or args.all_train:
         logger.info("Stage 1: SFT...")
         cmd = [
-            "deepspeed", f"--num_gpus={num_gpus}",
+            "deepspeed",
+            f"--num_gpus={num_gpus}",
             "training/train.py",
-            "--deepspeed", "training/configs/ds_config.json",
-            "--model", model,
-            "--data-dir", str(TRAIN_DIR),
-            "--output-dir", "checkpoints/proofcoach-sft",
+            "--deepspeed",
+            "training/configs/ds_config.json",
+            "--model",
+            model,
+            "--data-dir",
+            str(TRAIN_DIR),
+            "--output-dir",
+            "checkpoints/proofcoach-sft",
         ]
         subprocess.run(cmd, check=True)
 
     if args.rl or args.all_train:
         logger.info("Stage 2: GRPO RL with Lean 4 reward...")
         cmd = [
-            "deepspeed", f"--num_gpus={num_gpus}",
+            "deepspeed",
+            f"--num_gpus={num_gpus}",
             "training/train_rl.py",
-            "--base-model", "checkpoints/proofcoach-sft/final",
-            "--output-dir", "checkpoints/proofcoach-rl",
+            "--base-model",
+            "checkpoints/proofcoach-sft/final",
+            "--output-dir",
+            "checkpoints/proofcoach-rl",
         ]
         subprocess.run(cmd, check=True)
 
     if args.dpo or args.all_train:
         logger.info("Stage 3: DPO on teaching quality...")
         cmd = [
-            "deepspeed", f"--num_gpus={num_gpus}",
+            "deepspeed",
+            f"--num_gpus={num_gpus}",
             "training/train_dpo.py",
-            "--base-model", "checkpoints/proofcoach-rl/final",
-            "--output-dir", "checkpoints/proofcoach-final",
+            "--base-model",
+            "checkpoints/proofcoach-rl/final",
+            "--output-dir",
+            "checkpoints/proofcoach-final",
         ]
         subprocess.run(cmd, check=True)
 
@@ -276,6 +306,7 @@ def run_train(args) -> None:
 # ---------------------------------------------------------------------------
 # Evaluate
 # ---------------------------------------------------------------------------
+
 
 def run_evaluate(args) -> None:
     """Run CoachBench evaluation."""
@@ -301,6 +332,7 @@ def run_evaluate(args) -> None:
 # ---------------------------------------------------------------------------
 # Stats
 # ---------------------------------------------------------------------------
+
 
 def print_stats(args) -> None:
     """Print dataset statistics."""
@@ -331,6 +363,7 @@ def print_stats_for_dir(data_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 # Interactive Tutor
 # ---------------------------------------------------------------------------
+
 
 def run_tutor(args) -> None:
     """Launch an interactive tutoring session using the local model."""
@@ -371,6 +404,7 @@ def run_tutor(args) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="ProofCoach Pipeline")
     subparsers = parser.add_subparsers(dest="command")
@@ -394,7 +428,7 @@ def main() -> None:
     synth_parser.add_argument("--workers", type=int, default=20)
 
     # Verify
-    verify_parser = subparsers.add_parser("verify-lean", help="Batch Lean 4 verification")
+    subparsers.add_parser("verify-lean", help="Batch Lean 4 verification")
 
     # Train
     train_parser = subparsers.add_parser("train", help="Run training stages")
@@ -414,7 +448,7 @@ def main() -> None:
     eval_parser.add_argument("--model", type=str)
 
     # Stats
-    stats_parser = subparsers.add_parser("stats", help="Print dataset stats")
+    subparsers.add_parser("stats", help="Print dataset stats")
 
     # Tutor (interactive)
     tutor_parser = subparsers.add_parser("tutor", help="Interactive tutoring session")
@@ -452,22 +486,22 @@ def main() -> None:
 
     # Handle flat flags
     if args.collect or args.all:
-        args.all_data = getattr(args, 'all_data', False) or args.all
+        args.all_data = getattr(args, "all_data", False) or args.all
         asyncio.run(run_collect(args))
 
     if args.synthesize or args.all:
-        args.all_synth = getattr(args, 'all_synth', False) or args.all
+        args.all_synth = getattr(args, "all_synth", False) or args.all
         asyncio.run(run_synthesize(args))
 
     if args.verify_lean_flat or args.all:
         asyncio.run(run_verify_lean(args))
 
     if args.train or args.all:
-        args.all_train = getattr(args, 'all_train', False) or args.all
+        args.all_train = getattr(args, "all_train", False) or args.all
         run_train(args)
 
     if args.evaluate or args.all:
-        args.all_eval = getattr(args, 'all_eval', False) or args.all
+        args.all_eval = getattr(args, "all_eval", False) or args.all
         run_evaluate(args)
 
     if args.stats:
@@ -476,9 +510,19 @@ def main() -> None:
     if args.tutor:
         run_tutor(args)
 
-    if not any([args.collect, args.synthesize, args.verify_lean_flat,
-                args.train, args.evaluate, args.stats, args.tutor, args.all,
-                args.command]):
+    if not any(
+        [
+            args.collect,
+            args.synthesize,
+            args.verify_lean_flat,
+            args.train,
+            args.evaluate,
+            args.stats,
+            args.tutor,
+            args.all,
+            args.command,
+        ]
+    ):
         parser.print_help()
 
 

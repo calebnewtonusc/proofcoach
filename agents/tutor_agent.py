@@ -29,6 +29,7 @@ from synthesis.prompts import PROOFCOACH_SYSTEM
 @dataclass
 class TutoringSession:
     """A single tutoring session state."""
+
     session_id: str
     problem: str
     student_id: Optional[str] = None
@@ -41,6 +42,7 @@ class TutoringSession:
 @dataclass
 class TutoringResponse:
     """Response from the tutor agent."""
+
     question: str
     hint_level: int
     verified_steps: list[str]
@@ -80,7 +82,9 @@ class TutorAgent:
         self._sessions: dict[str, TutoringSession] = {}
 
         logger.info(f"Loading tutor model from {model_path}...")
-        self._tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            model_path, trust_remote_code=True
+        )
         try:
             self._model = AutoModelForCausalLM.from_pretrained(
                 model_path,
@@ -90,7 +94,9 @@ class TutorAgent:
                 trust_remote_code=True,
             )
         except (ValueError, ImportError):
-            logger.warning("flash_attention_2 not available; falling back to eager attention")
+            logger.warning(
+                "flash_attention_2 not available; falling back to eager attention"
+            )
             self._model = AutoModelForCausalLM.from_pretrained(
                 model_path,
                 torch_dtype=torch.bfloat16,
@@ -154,15 +160,19 @@ class TutorAgent:
         approach_hint = self._extract_approach_hint(raw_response, hint_level)
 
         # Update session
-        session.turns.append({
-            "role": "student",
-            "content": student_work or "",
-            "hint_level": hint_level,
-        })
-        session.turns.append({
-            "role": "tutor",
-            "content": raw_response,
-        })
+        session.turns.append(
+            {
+                "role": "student",
+                "content": student_work or "",
+                "hint_level": hint_level,
+            }
+        )
+        session.turns.append(
+            {
+                "role": "tutor",
+                "content": raw_response,
+            }
+        )
 
         return {
             "question": question,
@@ -206,7 +216,8 @@ class TutorAgent:
         if n_turns >= 4:
             # Check for progress indicators in recent turns
             recent_student = [
-                t["content"] for t in session.turns[-4:]
+                t["content"]
+                for t in session.turns[-4:]
                 if t["role"] == "student" and t.get("content")
             ]
             if len(recent_student) >= 2 and self._looks_stuck(recent_student):
@@ -274,7 +285,7 @@ class TutorAgent:
             )
 
         # Decode only the new tokens
-        new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
+        new_tokens = outputs[0][inputs["input_ids"].shape[1] :]
         return self._tokenizer.decode(new_tokens, skip_special_tokens=True)
 
     def _extract_question(self, response: str) -> str:
@@ -308,9 +319,17 @@ class TutorAgent:
 
         # Look for technique keywords
         techniques = [
-            "modular arithmetic", "induction", "AM-GM", "Cauchy-Schwarz",
-            "pigeonhole", "generating functions", "vieta", "induction",
-            "contradiction", "casework", "constructive",
+            "modular arithmetic",
+            "induction",
+            "AM-GM",
+            "Cauchy-Schwarz",
+            "pigeonhole",
+            "generating functions",
+            "vieta",
+            "induction",
+            "contradiction",
+            "casework",
+            "constructive",
         ]
         response_lower = response.lower()
         for tech in techniques:
@@ -323,7 +342,8 @@ class TutorAgent:
         # Look for patterns like "Try: AMC 2019 12A Problem 15"
         match = re.search(
             r"(?:try|next problem|practice)[:\s]+([A-Z\d\s/]+Problem[:\s]\d+)",
-            response, re.IGNORECASE
+            response,
+            re.IGNORECASE,
         )
         if match:
             return match.group(1).strip()

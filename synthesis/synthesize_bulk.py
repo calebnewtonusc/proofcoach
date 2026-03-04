@@ -11,6 +11,7 @@ Usage:
 
 import sys
 from pathlib import Path as _Path
+
 sys.path.insert(0, str(_Path(__file__).parent.parent))
 
 import asyncio
@@ -25,23 +26,26 @@ try:
     import aiofiles
 except ImportError as exc:
     raise ImportError(
-        "aiofiles is required for synthesize_bulk. "
-        "Install with: pip install aiofiles"
+        "aiofiles is required for synthesize_bulk. Install with: pip install aiofiles"
     ) from exc
 import aiohttp
 import anthropic
 from loguru import logger
 
 from synthesis.prompts import (
-    TEACHING_SYSTEM, TEACHING_USER,
-    EXTRACT_APPROACH_SYSTEM, EXTRACT_APPROACH_USER,
-    LEAN4_EXTRACT_SYSTEM, LEAN4_EXTRACT_USER,
+    TEACHING_SYSTEM,
+    TEACHING_USER,
+    EXTRACT_APPROACH_SYSTEM,
+    EXTRACT_APPROACH_USER,
+    LEAN4_EXTRACT_SYSTEM,
+    LEAN4_EXTRACT_USER,
 )
 
 
 @dataclass
 class SynthesisResult:
     """Result of synthesizing one tutoring dialogue."""
+
     problem_id: str
     approach_name: str
     conversation: dict
@@ -106,13 +110,17 @@ class SynthesisPipeline:
     async def synthesize_all(self) -> None:
         """Synthesize dialogues for all problems in raw_dir."""
         problems = self._load_all_problems()
-        logger.info(f"Synthesizing dialogues for {len(problems):,} (problem, approach) pairs...")
+        logger.info(
+            f"Synthesizing dialogues for {len(problems):,} (problem, approach) pairs..."
+        )
 
         start_time = time.time()
 
         try:
-            tasks = [self._synthesize_one(prob, approach) for prob, approach in problems]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            tasks = [
+                self._synthesize_one(prob, approach) for prob, approach in problems
+            ]
+            await asyncio.gather(*tasks, return_exceptions=True)
         finally:
             # PC-9: Close the shared vLLM session when done.
             if self._vllm_session is not None:
@@ -121,7 +129,7 @@ class SynthesisPipeline:
 
         elapsed = time.time() - start_time
         logger.info(
-            f"Synthesis complete in {elapsed/60:.1f}m: "
+            f"Synthesis complete in {elapsed / 60:.1f}m: "
             f"{self._stats['success']:,} success, "
             f"{self._stats['failed']:,} failed, "
             f"{self._stats['quality_filtered']:,} filtered"
@@ -143,7 +151,9 @@ class SynthesisPipeline:
                         pairs.append((problem, solution))
         return pairs
 
-    async def _synthesize_one(self, problem: dict, solution: dict) -> Optional[SynthesisResult]:
+    async def _synthesize_one(
+        self, problem: dict, solution: dict
+    ) -> Optional[SynthesisResult]:
         """Synthesize a single tutoring dialogue from a problem + solution approach."""
         async with self._semaphore:
             try:
@@ -154,7 +164,9 @@ class SynthesisPipeline:
                     return None
 
                 # Step 2: Generate the Socratic dialogue
-                dialogue = await self._generate_dialogue(problem, solution, approach_data)
+                dialogue = await self._generate_dialogue(
+                    problem, solution, approach_data
+                )
                 if not dialogue:
                     self._stats["failed"] += 1
                     return None
@@ -184,7 +196,10 @@ class SynthesisPipeline:
                 )
 
                 # Write immediately (don't buffer in memory)
-                output_file = self.output_dir / f"{problem.get('competition', 'unknown').lower()}.jsonl"
+                output_file = (
+                    self.output_dir
+                    / f"{problem.get('competition', 'unknown').lower()}.jsonl"
+                )
                 async with aiofiles.open(output_file, "a") as f:
                     await f.write(json.dumps(conversation) + "\n")
 
@@ -197,7 +212,9 @@ class SynthesisPipeline:
                 return result
 
             except Exception as e:
-                logger.debug(f"Error synthesizing {problem.get('problem_id', '?')}: {e}")
+                logger.debug(
+                    f"Error synthesizing {problem.get('problem_id', '?')}: {e}"
+                )
                 self._stats["failed"] += 1
                 return None
 
@@ -218,8 +235,12 @@ class SynthesisPipeline:
         """Generate the full Socratic tutoring dialogue."""
         solutions = problem.get("solutions", [])
         approach_number = next(
-            (i + 1 for i, s in enumerate(solutions) if s.get("post_id") == solution.get("post_id")),
-            1
+            (
+                i + 1
+                for i, s in enumerate(solutions)
+                if s.get("post_id") == solution.get("post_id")
+            ),
+            1,
         )
 
         prompt = TEACHING_USER.format(
@@ -249,7 +270,9 @@ class SynthesisPipeline:
             return []
 
         claims = data.get("claims", [])
-        return [c.get("lean4_proposition", "") for c in claims if c.get("lean4_proposition")]
+        return [
+            c.get("lean4_proposition", "") for c in claims if c.get("lean4_proposition")
+        ]
 
     def _score_quality(self, dialogue_text: str, approach_data: dict) -> float:
         """Score dialogue quality heuristically (0.0 to 1.0)."""
@@ -274,12 +297,21 @@ class SynthesisPipeline:
 
         # Check tutor turns contain questions (?)
         tutor_turns = [t for t in dialogue_turns if t.get("role") == "tutor"]
-        question_ratio = sum(1 for t in tutor_turns if "?" in t.get("content", "")) / max(len(tutor_turns), 1)
+        question_ratio = sum(
+            1 for t in tutor_turns if "?" in t.get("content", "")
+        ) / max(len(tutor_turns), 1)
         score += 0.15 * question_ratio
 
         # Check it doesn't just give the answer directly
         full_text = " ".join(t.get("content", "") for t in dialogue_turns[:2])
-        if any(phrase in full_text.lower() for phrase in ["the answer is", "therefore the answer", "so the final answer"]):
+        if any(
+            phrase in full_text.lower()
+            for phrase in [
+                "the answer is",
+                "therefore the answer",
+                "so the final answer",
+            ]
+        ):
             score -= 0.3
 
         # Has a key insight
@@ -320,7 +352,12 @@ class SynthesisPipeline:
 
         return {
             "conversations": [
-                {"role": "system", "content": data.get("system", "You are ProofCoach, a Socratic math tutor.")},
+                {
+                    "role": "system",
+                    "content": data.get(
+                        "system", "You are ProofCoach, a Socratic math tutor."
+                    ),
+                },
                 {"role": "user", "content": user_content},
                 {"role": "assistant", "content": first_tutor},
             ],
@@ -331,7 +368,9 @@ class SynthesisPipeline:
                 "number": problem.get("number"),
                 "approach_name": approach_data.get("approach_name", ""),
                 "key_insight": approach_data.get("key_insight", ""),
-                "difficulty": problem.get("difficulty", approach_data.get("difficulty", 5)),
+                "difficulty": problem.get(
+                    "difficulty", approach_data.get("difficulty", 5)
+                ),
                 "topics": problem.get("topics", []),
                 "lean4_claims": lean4_claims,
                 "full_dialogue": data.get("dialogue", []),
@@ -413,6 +452,7 @@ class SynthesisPipeline:
     def _parse_json_response(self, text: str) -> Optional[dict]:
         """Parse JSON from LLM response, handling markdown code blocks."""
         import re
+
         # Try to find JSON in code block first
         match = re.search(r"```(?:json)?\n?(.*?)\n?```", text, re.DOTALL)
         if match:
@@ -433,6 +473,7 @@ class SynthesisPipeline:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser()

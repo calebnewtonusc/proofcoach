@@ -5,7 +5,6 @@ Tests the deployed API for basic functionality.
 """
 
 import sys
-import time
 
 import httpx
 
@@ -69,7 +68,11 @@ def main():
         r = httpx.post(f"{BASE_URL}/v1/diagnose", json=payload, timeout=30)
         data = r.json()
         ok = r.status_code == 200
-        check("POST /v1/diagnose", ok, data.get("misconception", data.get("correct", ""))[:80])
+        check(
+            "POST /v1/diagnose",
+            ok,
+            data.get("misconception", data.get("correct", ""))[:80],
+        )
     except Exception as e:
         check("POST /v1/diagnose", False, str(e))
 

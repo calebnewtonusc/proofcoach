@@ -9,10 +9,10 @@ Wraps SynthesisPipeline with teaching-specific logic:
 
 import sys
 from pathlib import Path as _Path
+
 sys.path.insert(0, str(_Path(__file__).parent.parent))
 
 import asyncio
-import json
 from pathlib import Path
 from typing import Optional
 
@@ -36,7 +36,7 @@ class TeachingSynthesizer:
     """
 
     DIFFICULTY_DISTRIBUTION = {
-        "easy": (1, 4, 0.25),      # (min, max, fraction)
+        "easy": (1, 4, 0.25),  # (min, max, fraction)
         "medium": (4, 7, 0.50),
         "hard": (7, 10, 0.25),
     }
@@ -98,9 +98,12 @@ class TeachingSynthesizer:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
-    parser = argparse.ArgumentParser(description="Synthesize Socratic teaching dialogues")
+    parser = argparse.ArgumentParser(
+        description="Synthesize Socratic teaching dialogues"
+    )
     parser.add_argument("--backend", choices=["claude", "vllm"], default="claude")
     parser.add_argument("--vllm-urls", nargs="+", default=[])
     parser.add_argument("--workers", type=int, default=20)

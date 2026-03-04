@@ -13,11 +13,11 @@ Preference signals:
 
 import sys
 from pathlib import Path as _Path
+
 sys.path.insert(0, str(_Path(__file__).parent.parent))
 
 import asyncio
 import json
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -71,12 +71,14 @@ class DPOPairGenerator:
 
         # Load synthesized teaching dialogues (these become "chosen")
         chosen_examples = self._load_synthesized_dialogues()
-        logger.info(f"Loaded {len(chosen_examples):,} synthesized dialogues as chosen examples")
+        logger.info(
+            f"Loaded {len(chosen_examples):,} synthesized dialogues as chosen examples"
+        )
 
         output_file = self.output_dir / "dpo_pairs.jsonl"
 
         # Generate rejected counterparts
-        tasks = [self._generate_pair(ex) for ex in chosen_examples[:self.target_pairs]]
+        tasks = [self._generate_pair(ex) for ex in chosen_examples[: self.target_pairs]]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         async with aiofiles.open(output_file, "w") as f:
@@ -129,9 +131,7 @@ class DPOPairGenerator:
             )
 
         return {
-            "prompt": [
-                c for c in conversations if c.get("role") in ("system", "user")
-            ],
+            "prompt": [c for c in conversations if c.get("role") in ("system", "user")],
             "chosen": [{"role": "assistant", "content": chosen_response}],
             "rejected": [{"role": "assistant", "content": rejected_response}],
             "metadata": {
@@ -155,9 +155,12 @@ class DPOPairGenerator:
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
+
     load_dotenv()
 
-    parser = argparse.ArgumentParser(description="Generate DPO preference pairs for teaching quality")
+    parser = argparse.ArgumentParser(
+        description="Generate DPO preference pairs for teaching quality"
+    )
     parser.add_argument("--backend", choices=["claude", "vllm"], default="claude")
     parser.add_argument("--vllm-urls", nargs="+", default=[])
     parser.add_argument("--output-path", default="data/synthesized/dpo")
